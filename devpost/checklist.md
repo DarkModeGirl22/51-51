@@ -9,7 +9,7 @@ Build mode: fast (learner asked to move quickly with no extra steps)
 
 ## Slices
 
-- [ ] **1. Two partners can join the same couple, privately**
+- [x] **1. Two partners can join the same couple, privately**
   Becomes usable: Partner 1 opens the app, answers the private questions, picks a colour and gets a partner code; Partner 2 enters the code, answers their own questions and lands on the same (empty) home screen. A wrong code shows a friendly message. Neither partner can see the other's private answers.
   Why now: Everything else depends on two linked partners and on privacy being enforced by the server; bootstrapping (FastAPI, SQLite, pages, style) is included here.
   PRD ref: `prd.md > Private Onboarding`, `prd.md > States and Boundaries`
@@ -19,7 +19,7 @@ Build mode: fast (learner asked to move quickly with no extra steps)
   Learner check: In two windows, onboard as wife and husband with the code, and check the welcome and questions feel warm and simple.
   Commit: `Onboard two partners with a private profile and a partner code`
 
-- [ ] **2. Both partners log their day, and the AI sorts each entry**
+- [x] **2. Both partners log their day, and the AI sorts each entry**
   Becomes usable: Either partner adds a text entry or a receipt photo; it appears under Today in their colour, tagged kids, home or money. If the AI fails or can't read a photo, the entry is saved as unsorted or the app asks for a short description.
   Why now: Logging is the input for everything the agents do, and photo reading on Gemini's free tier is the biggest technical risk, so it comes before the kernel.
   PRD ref: `prd.md > Daily Logging`, `prd.md > States and Boundaries`
