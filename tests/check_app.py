@@ -137,9 +137,10 @@ def slice3(c):
     ok(not _re.search(r"\d|%", json.dumps(hw["week"]["areas"]) + hw["week"]["message"] + hh["week"]["message"]),
        "board and messages contain no numbers")
     ok(hw["week"]["message"] != hh["week"]["message"], "uneven week -> each partner gets a different message")
-    ok("proud" in hw["week"]["message"].lower() or "thank" in hw["week"]["message"].lower(),
+    ok(hw["week"]["message"] in [m.format(other="Karim") for m in agents.MORE_MSG],
        "the partner who did more is told they did a lot")
-    ok("thank" in hh["week"]["message"].lower(), "the other is told to say thank you")
+    ok(hh["week"]["message"] in [m.format(other="Leila") for m in agents.LESS_MSG]
+       and "thank" in hh["week"]["message"].lower(), "the other is told to say thank you")
     no_private(board_text, "board never contains private answers")
     ok("message" not in json.dumps(hh["week"]).replace('"message"', ""), "each partner only receives their own message")
 

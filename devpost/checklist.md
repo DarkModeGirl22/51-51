@@ -56,6 +56,8 @@ Build mode: fast (learner asked to move quickly with no extra steps)
 
 ## Final Review
 
+- [x] Trick tests added (`tests/check_tricks.py`, 36 checks) at the learner's request — fixed: "51/51" was stripped by the no-numbers guard; unsafe AI sentences now replaced with clean wording from the logs; names, sizes and photo types validated
+- [x] Pitch README and MIT license added (rules require an open-source license)
 - [ ] Final review complete — feedback resolved and learner confirms ready to ship
 
 ## Code Tour and App Map

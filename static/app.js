@@ -25,9 +25,11 @@ async function api(path, options = {}) {
   let data = null;
   try { data = await res.json(); } catch (e) {}
   if (!res.ok) {
-    const msg = data && data.detail
-      ? (typeof data.detail === "string" ? data.detail : "Please check your answers and try again.")
-      : "Something went wrong. Please try again.";
+    let msg = "Something went wrong. Please try again.";
+    if (data && typeof data.detail === "string") msg = data.detail;
+    else if (data && Array.isArray(data.detail) && data.detail[0] && data.detail[0].msg)
+      msg = String(data.detail[0].msg).replace(/^Value error, /, "");
+    else if (data && data.detail) msg = "Please check your answers and try again.";
     const err = new Error(msg);
     err.status = res.status;
     throw err;

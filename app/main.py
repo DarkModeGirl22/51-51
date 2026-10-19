@@ -8,7 +8,7 @@ from pathlib import Path
 from fastapi import FastAPI, File, Form, Header, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from . import agents, ai, db
 
@@ -39,9 +39,23 @@ class Answers(BaseModel):
     colour: str
     material: dict = {}
     immaterial: dict = {}
-    extra_note: str = ""
-    kids_count: int | None = None
-    kids_ages: str = ""
+    extra_note: str = Field(default="", max_length=1500)
+    kids_count: int | None = Field(default=None, ge=0, le=20)
+    kids_ages: str = Field(default="", max_length=80)
+
+    @field_validator("name")
+    @classmethod
+    def name_is_a_name(cls, v: str) -> str:
+        v = " ".join(v.split())
+        if not v or not re.fullmatch(r"[^\W\d_]+(?:[ '’-][^\W\d_]+)*", v):
+            raise ValueError("Please use just your first name, with letters only.")
+        return v
+
+    @field_validator("material", "immaterial")
+    @classmethod
+    def answers_are_short_text(cls, v: dict) -> dict:
+        clean = {str(k)[:40]: str(val)[:1000] for k, val in list(v.items())[:12] if val is not None}
+        return clean
 
 
 class JoinBody(Answers):
@@ -246,6 +260,8 @@ async def add_entry(text: str = Form(default=""), photo: UploadFile | None = Fil
         raise HTTPException(422, "Write what you did, or add a photo.")
     if len(image) > MAX_PHOTO:
         raise HTTPException(413, "That photo is too big. Try a smaller one.")
+    if image and not (photo.content_type or "").startswith("image/"):
+        raise HTTPException(422, "That doesn't look like a photo. Try a picture of the receipt.")
     with db.connect() as conn:
         me = me_from_key(conn, x_partner_key)
 

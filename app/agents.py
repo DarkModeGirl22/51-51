@@ -54,12 +54,17 @@ def leaks(text: str, partners) -> bool:
     return False
 
 
+BRAND = "51/51"  # the app's name is the one number allowed on screen
+
+
 def has_numbers(text: str) -> bool:
-    return bool(re.search(r"\d|%|percent", text, re.I))
+    return bool(re.search(r"\d|%|percent", text.replace(BRAND, ""), re.I))
 
 
 def strip_numbers(text: str) -> str:
-    text = re.sub(r"\b[\w-]*\d[\w-]*%?\b|%|percent", "", text, flags=re.I)
+    parts = text.split(BRAND)
+    parts = [re.sub(r"\b[\w-]*\d[\w-]*%?\b|%|percent", "", p, flags=re.I) for p in parts]
+    text = BRAND.join(parts)
     return re.sub(r"\s{2,}", " ", text).replace(" ,", ",").replace(" .", ".").strip()
 
 
@@ -122,12 +127,15 @@ Reply as JSON: {{"load": {{"kids": 0-4, "home": 0-4, "money": 0-4}}, "note": "..
 
 
 # ---------- mediator: the weekly board ----------
-def _practice_board(a, b, notes, rnd) -> dict:
+def _practice_board(a, b, notes, rnd, entries=()) -> dict:
     areas = {}
     total_a = sum(notes[a["id"]]["load"].values())
     total_b = sum(notes[b["id"]]["load"].values())
     for area in AREAS:
         la, lb = notes[a["id"]]["load"][area], notes[b["id"]]["load"][area]
+        if la == lb == 0:  # the agents saw nothing here; trust the logs instead
+            la = min(4, sum(1 for e in entries if e["partner_id"] == a["id"] and e["area"] == area))
+            lb = min(4, sum(1 for e in entries if e["partner_id"] == b["id"] and e["area"] == area))
         word = AREA_WORDS[area]
         if la == lb == 0:
             text = rnd.choice(QUIET).format(area=word).capitalize() + "."
@@ -165,7 +173,7 @@ def weekly_board(a, b, entries) -> dict:
     if ai.mode() == "practice":
         board = _practice_board(a, b, notes, rnd)
         board["messages"] = _messages(a, b, board["balance"], rnd)
-        return _guard(board, a, b)
+        return _guard(board, a, b, notes, rnd, entries)
 
     prompt = f"""You are the neutral mediator of 51/51, an app that helps a married couple share
 kids, home and money fairly. 51/51 means both give a little more than half.
@@ -201,32 +209,29 @@ Reply as JSON: {{"areas": {{"kids": "...", "home": "...", "money": "..."}}, "bal
                  "headline": str(r.get("headline", ""))[:80],
                  "messages": {a["id"]: str(r["messages"][a["name"]]), b["id"]: str(r["messages"][b["name"]])}}
     except (KeyError, TypeError, ValueError):
-        board = _practice_board(a, b, notes, rnd)
+        board = _practice_board(a, b, notes, rnd, entries)
         board["messages"] = _messages(a, b, board["balance"], rnd)
-    return _guard(board, a, b, rnd)
+    return _guard(board, a, b, notes, rnd, entries)
 
 
-def _guard(board: dict, a, b, rnd=None) -> dict:
-    """No numbers, no private leaks — whatever the AI wrote."""
-    rnd = rnd or random.Random()
+def _guard(board: dict, a, b, notes: dict, rnd, entries=()) -> dict:
+    """No numbers, no private leaks — whatever the AI wrote.
+    Anything unsafe is replaced by clean wording built from the agents' ratings."""
+    safe = _practice_board(a, b, notes, rnd, entries)
     texts = list(board["areas"].values()) + list(board["messages"].values()) + [board.get("headline", "")]
-    if leaks(" ".join(texts), [a, b]):  # fall back to safe, rule-based wording
-        safe = _practice_board(a, b, {a["id"]: {"load": _loads(board, a)}, b["id"]: {"load": _loads(board, b)}}, rnd)
+    if leaks(" ".join(texts), [a, b]):
         board["areas"], board["headline"] = safe["areas"], ""
         board["messages"] = _messages(a, b, board["balance"], rnd)
-    for k in board["areas"]:
-        if has_numbers(board["areas"][k]):
-            board["areas"][k] = strip_numbers(board["areas"][k])
+    for k in AREAS:
+        if has_numbers(board["areas"][k]) or not board["areas"][k].strip():
+            board["areas"][k] = safe["areas"][k]
+    templates = _messages(a, b, board["balance"], rnd)
     for k in board["messages"]:
-        if has_numbers(board["messages"][k]):
-            board["messages"][k] = strip_numbers(board["messages"][k])
+        if has_numbers(board["messages"][k]) or not board["messages"][k].strip():
+            board["messages"][k] = templates[k]
     if has_numbers(board.get("headline", "")):
         board["headline"] = ""
     return board
-
-
-def _loads(board, p):
-    return {area: (2 if p["name"] in board["areas"][area] else 0) for area in AREAS}
 
 
 # ---------- mediator: the conflict button ----------
