@@ -183,6 +183,16 @@ def mediator_logic(c):
     ok("Leila" in r.json()["reply"] and "Karim" in r.json()["reply"],
        "same pattern seen from the husband's side -> the same fair fix, no gender bias")
 
+    r = c.post("/api/conflicts", json={"question": "I picked up the kids 10 times this month and he did it only 2 times!!"},
+               headers=sample)
+    ok(r.status_code == 200 and "school runs" in r.json()["reply"],
+       "an angry message with numbers is accepted and answered from the logs, not silenced")
+    with FakeGemini(lambda p: {"reply": "I hear you. The log shows four of the last five pickups were Leila's. "
+                                         "A fair fix: Karim takes Friday's pickup."}):
+        r = c.post("/api/conflicts", json={"question": "I did 10 pickups, he did 2"}, headers=sample)
+    ok("four of the last five" in r.json()["reply"] and "Friday" in r.json()["reply"],
+       "the mediator may state plain counts from the logs (no-numbers is only for the weekly board)")
+
     w, h, _ = onboard(c, wife={**WIFE, "kids_ages": "7 and 4"}, husband={**HUSBAND, "kids_ages": "4, 7"})
     ok(c.get("/api/home", headers=w).json()["fact_question"] is None, "same ages in a different order -> no false alarm")
     ok(agents.strip_numbers("Week 42 was great, 51/51!") == "Week was great, 51/51!", "stripping keeps 51/51")

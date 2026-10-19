@@ -108,11 +108,11 @@ Based on what these apps describe publicly. Most apps **count**. 51/51 **underst
 
 ## Tested to break
 
-We didn't just test that it works. We tried to **trick it**. Two test suites, **83 checks**, all passing:
+We didn't just test that it works. We tried to **trick it**. Two test suites, **85 checks**, all passing:
 
 ```bash
 python tests/check_app.py      # 47 checks: every feature, end to end
-python tests/check_tricks.py    # 36 checks: trying to break, fool or leak from it
+python tests/check_tricks.py    # 38 checks: trying to break, fool or leak from it
 ```
 
 A **fake Gemini** plays the worst AI it can be, and 51/51 has to survive:
@@ -127,6 +127,7 @@ A **fake Gemini** plays the worst AI it can be, and 51/51 has to survive:
 | Names like `Karim2`, a 9 MB photo, a text file posing as a receipt, minus one children | Refused, each with a kind, plain-English message |
 | Another couple's key, a made-up key, a third person joining a couple | Nobody sees anything that isn't theirs |
 | Opening the app ten times in a row | The AI runs only when something new was logged, which protects the free quota |
+| An angry *"I picked up the kids 10 times, he did it twice!"* | Taken seriously, never silenced: the mediator checks the claim against the logs and can state plain counts. *No numbers* is only for the weekly board |
 | The same dishes pattern seen by the husband instead of the wife | Same facts, same fair fix. Gender never enters the judgement |
 
 **A real bug these tests caught:** the first no-numbers guard turned the app's own name *"51/51"* into *"/"* inside the kind messages. It's fixed, and now covered by a test.

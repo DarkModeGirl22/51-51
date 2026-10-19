@@ -258,7 +258,11 @@ Answer both of them (they both read your reply), calmly and neutrally:
   If the log has nothing on the topic, say so and suggest both log it from now on.
 - Never declare anyone guilty. Never judge by gender. Never reveal private details (salary, feelings,
   health, sacrifices); you may consider them to be fair, e.g. someone's working hours.
-- Short: three or four sentences, warm, no lists, no percentages.
+- If they quote numbers ("I picked up the kids ten times, he did it twice"), take them seriously:
+  acknowledge the feeling first, then check the claim against the log and say plainly what it shows.
+  You may mention simple counts from the log ("four of the last five pickups were yours"),
+  but never percentages, scores or "who is worse".
+- Short: three or four sentences, warm, no lists.
 Reply as JSON: {{"reply": "..."}}"""
     try:
         reply = str(ai.ask_json(prompt)["reply"]).strip()
