@@ -27,7 +27,7 @@ def startup() -> None:
 
 # ---------- pages ----------
 for route, page in {"/": "index.html", "/onboarding": "onboarding.html",
-                    "/home": "home.html", "/conflict": "conflict.html", "/enter": "enter.html"}.items():
+                    "/home": "home.html", "/conflict": "conflict.html", "/enter": "enter.html", "/sample": "sample.html"}.items():
     def _page(page=page):
         return FileResponse(STATIC / page)
     app.add_api_route(route, _page, include_in_schema=False)
@@ -331,8 +331,22 @@ def list_conflicts(x_partner_key: str | None = Header(default=None)):
 
 
 # ---------- sample couple (for trying the app and the demo video) ----------
+class SampleBody(Answers):
+    role: str  # "woman" or "man"
+
+
 @app.post("/api/demo")
-def create_demo():
-    from .sample import create_sample_couple
+def create_demo(body: SampleBody):
+    from .sample import LEILA, KARIM, create_sample_couple
+    if body.role not in ("woman", "man") or body.colour not in COLOURS:
+        raise HTTPException(422, "Please choose woman or man, and a colour.")
+    preset = LEILA if body.role == "woman" else KARIM
+    me = {"name": body.name.strip(), "colour": body.colour,
+          "kids_count": body.kids_count if body.kids_count is not None else preset["kids_count"],
+          "kids_ages": body.kids_ages.strip() or preset["kids_ages"],
+          # anything left empty falls back to the sample character's answers
+          "material": {**preset["material"], **{k: v for k, v in body.material.items() if v}},
+          "immaterial": {**preset["immaterial"], **{k: v for k, v in body.immaterial.items() if v}},
+          "extra_note": body.extra_note.strip() or preset["extra_note"]}
     with db.connect() as conn:
-        return create_sample_couple(conn, _new_code(conn))
+        return create_sample_couple(conn, _new_code(conn), me, body.role)

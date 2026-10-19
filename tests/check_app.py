@@ -191,12 +191,28 @@ def slice3(c):
 
 def slice4(c):
     from app import sample
-    d = c.post("/api/demo").json()
-    leila = {"X-Partner-Key": d["partners"][0]["link"].split("key=")[1]}
-    karim = {"X-Partner-Key": d["partners"][1]["link"].split("key=")[1]}
+    from app import db as _db
+    d = c.post("/api/demo", json={"role": "woman", "name": "Leila", "colour": "pink",
+                                  "material": {"job": ""}, "immaterial": {}, "extra_note": ""}).json()
+    leila = {"X-Partner-Key": d["key"]}
     h = c.get("/api/home", headers=leila).json()
-    ok(h["sample"] and h["week"] and h["week"]["areas"]["kids"], "sample couple has a full week")
-    ok(c.get("/enter").status_code == 200 and c.get("/conflict").status_code == 200, "conflict and enter pages load")
+    ok(h["sample"] and h["partner"]["name"] == "Karim", "sample: you join as the wife, Karim is already there")
+    ok(h["week"] and h["week"]["areas"]["kids"], "sample couple has a full week on the board")
+    with _db.connect() as conn:
+        n = conn.execute("SELECT COUNT(*) FROM entries e JOIN partners p ON p.id=e.partner_id WHERE p.key=?",
+                         (d["key"],)).fetchone()[0]
+        first = conn.execute("SELECT MIN(e.created_at) FROM entries e JOIN partners p ON p.id=e.partner_id"
+                             " WHERE p.couple_id=(SELECT couple_id FROM partners WHERE key=?)", (d["key"],)).fetchone()[0]
+        karim_key = conn.execute("SELECT key FROM partners WHERE name='Karim' AND couple_id="
+                                 "(SELECT couple_id FROM partners WHERE key=?)", (d["key"],)).fetchone()[0]
+    from datetime import datetime as _dt, timezone as _tz
+    ok(n > 40 and (_dt.now(_tz.utc) - _dt.fromisoformat(first)).days >= 50, "sample has about two months of history")
+    karim = {"X-Partner-Key": karim_key}
+    m = c.post("/api/demo", json={"role": "man", "name": "Sam", "colour": "pink",
+                                  "material": {}, "immaterial": {}, "extra_note": ""}).json()
+    hm = c.get("/api/home", headers={"X-Partner-Key": m["key"]}).json()
+    ok(hm["partner"]["name"] == "Leila" and hm["partner"]["colour"] != "pink", "as the husband, Leila is your partner in another colour")
+    ok(c.get("/sample").status_code == 200 and c.get("/conflict").status_code == 200, "sample and conflict pages load")
 
     r = c.post("/api/conflicts", json={"question": "I'm tired of always doing the dishes!"}, headers=leila)
     ok(r.status_code == 200 and "Karim" in r.json()["reply"], "dishes complaint -> reply proposes Karim takes turns")

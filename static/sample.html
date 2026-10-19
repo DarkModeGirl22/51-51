@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>51/51 · Sample couple</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,600;0,800;0,900;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<main>
+  <div class="brand">
+    <div class="dots"><i></i><i></i></div>
+    <div class="logo">51<span>/</span>51</div>
+  </div>
+  <div class="sample-note">Sample couple · you join an invented couple that has used 51/51 for two months</div>
+  <div class="steps"><i class="on"></i><i></i><i></i></div>
+
+  <form id="form">
+    <section class="card step" data-step="1">
+      <h2>Who are you in this couple?</h2>
+      <label>I am the…</label>
+      <div class="row" id="roles">
+        <button type="button" class="secondary role" data-role="woman">👩 Wife</button>
+        <button type="button" class="secondary role" data-role="man">👨 Husband</button>
+      </div>
+      <label for="name">Your first name</label>
+      <input id="name" maxlength="40" required>
+      <label>Your colour</label>
+      <div class="colours" id="colours"></div>
+      <div class="row" style="margin-top:20px"><button type="button" data-next>Next</button></div>
+    </section>
+
+    <section class="card step hidden" data-step="2">
+      <h2>Your days</h2>
+      <div class="private-note">🔒 <span>Only <b>your</b> agent sees this.</span></div>
+      <label for="job">Your job</label>
+      <input id="job">
+      <label for="hours">Your usual working hours</label>
+      <input id="hours">
+      <label for="earns">Who earns more?</label>
+      <select id="earns">
+        <option value="me">I do</option>
+        <option value="partner">My partner does</option>
+        <option value="same">About the same</option>
+      </select>
+      <div class="row" style="margin-top:20px">
+        <button type="button" class="secondary" data-back>Back</button>
+        <button type="button" data-next>Next</button>
+      </div>
+    </section>
+
+    <section class="card step hidden" data-step="3">
+      <h2>How it really feels</h2>
+      <div class="private-note">🔒 <span>This stays between you and your agent.</span></div>
+      <label for="sacrifices">What have you given up for your family?</label>
+      <textarea id="sacrifices"></textarea>
+      <label for="feel">How do you feel about how you share things?</label>
+      <textarea id="feel"></textarea>
+      <label for="extra">Anything else your agent should know?</label>
+      <textarea id="extra"></textarea>
+      <div class="row" style="margin-top:20px">
+        <button type="button" class="secondary" data-back>Back</button>
+        <button type="submit" id="finish">Enter our home</button>
+      </div>
+      <p class="error hidden" id="error"></p>
+    </section>
+  </form>
+</main>
+<script src="/static/app.js"></script>
+<script>
+  // Pre-filled answers so the demo is quick; anything can be changed.
+  const PRESETS = {
+    woman: { name: "Leila", colour: "pink", job: "Nurse, part-time", hours: "9am to 3pm, Monday to Thursday", earns: "partner",
+             sacrifices: "I moved to part-time after our second child was born",
+             feel: "I feel like I do every school run and every dish, and nobody notices", extra: "" },
+    man:   { name: "Karim", colour: "blue", job: "Site engineer", hours: "7am until 8pm, often Saturdays", earns: "me",
+             sacrifices: "I took the job with long hours so we could afford the bigger flat",
+             feel: "I barely see the kids on weekdays and I feel guilty about it",
+             extra: "School pickups at half past four are impossible with my hours." },
+  };
+  let role = null, colour = null, step = 1;
+  const $ = id => document.getElementById(id);
+
+  function drawColours() {
+    const box = $("colours"); box.innerHTML = "";
+    for (const c of ["pink", "blue", "orange", "green"]) {
+      const b = el("button", { type: "button", class: "c-" + c + (colour === c ? " picked" : ""), "aria-label": c });
+      b.onclick = () => { colour = c; drawColours(); };
+      box.append(b);
+    }
+  }
+  document.querySelectorAll(".role").forEach(b => b.onclick = () => {
+    role = b.dataset.role;
+    document.querySelectorAll(".role").forEach(x => x.classList.toggle("secondary", x !== b));
+    const p = PRESETS[role];
+    $("name").value = p.name; colour = p.colour;
+    $("job").value = p.job; $("hours").value = p.hours; $("earns").value = p.earns;
+    $("sacrifices").value = p.sacrifices; $("feel").value = p.feel; $("extra").value = p.extra;
+    drawColours();
+  });
+
+  function show(n) {
+    step = n;
+    document.querySelectorAll(".step").forEach(s => s.classList.toggle("hidden", s.dataset.step != n));
+    document.querySelectorAll(".steps i").forEach((d, i) => d.classList.toggle("on", i < n));
+  }
+  document.querySelectorAll("[data-next]").forEach(b => b.onclick = () => {
+    if (step === 1 && !role) return alert("Choose wife or husband.");
+    if (step === 1 && (!$("name").value.trim() || !colour)) return alert("Add your name and a colour.");
+    show(step + 1);
+  });
+  document.querySelectorAll("[data-back]").forEach(b => b.onclick = () => show(step - 1));
+
+  $("form").onsubmit = async (e) => {
+    e.preventDefault();
+    const btn = $("finish"); btn.disabled = true; btn.textContent = "Opening two months of your life…";
+    try {
+      const r = await api("/api/demo", { method: "POST", json: {
+        role, name: $("name").value.trim(), colour,
+        material: { job: $("job").value.trim(), working_hours: $("hours").value.trim(), who_earns_more: $("earns").value },
+        immaterial: { sacrifices: $("sacrifices").value.trim(), feelings: $("feel").value.trim() },
+        extra_note: $("extra").value.trim() } });
+      setKey(r.key);
+      location.href = "/home";
+    } catch (ex) {
+      $("error").textContent = ex.message; $("error").classList.remove("hidden");
+      btn.disabled = false; btn.textContent = "Enter our home";
+    }
+  };
+  drawColours();
+</script>
+</body>
+</html>

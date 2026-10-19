@@ -77,3 +77,4 @@ Activity mode:
 - Added a "Try the sample couple" button and `/api/demo` instead of only `scripts/seed_demo.py` — Render's free plan has no shell to run scripts, and the database resets when the service sleeps.
 - Slices 3 and 4 were built in one pass (they share the mediator), committed as two commits.
 
+- Sample couple reworked at the learner's request — the visitor chooses wife or husband, answers three quick pages of three questions (pre-filled, editable), and joins an invented partner with about two months of logs; real couples keep the two original buttons.
