@@ -37,6 +37,21 @@ CREATE TABLE IF NOT EXISTS entries (
     area TEXT NOT NULL,                -- kids | home | money | unsorted
     summary TEXT NOT NULL              -- what is shown on Today
 );
+CREATE TABLE IF NOT EXISTS board_cache (
+    couple_id INTEGER NOT NULL,
+    week_start TEXT NOT NULL,
+    fingerprint TEXT NOT NULL,         -- changes when entries or partners change
+    data TEXT NOT NULL,                -- JSON board incl. one message per partner
+    PRIMARY KEY (couple_id, week_start)
+);
+CREATE TABLE IF NOT EXISTS conflicts (
+    id INTEGER PRIMARY KEY,
+    couple_id INTEGER NOT NULL REFERENCES couples(id),
+    partner_id INTEGER NOT NULL REFERENCES partners(id),
+    question TEXT NOT NULL,
+    reply TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
 """
 
 

@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>51/51</title>
+</head>
+<body>
+<script src="/static/app.js"></script>
+<script>
+  // Opens 51/51 as one partner of the sample couple (link from "Try the sample couple").
+  const key = new URLSearchParams(location.search).get("key");
+  if (key) setKey(key);
+  location.replace(key ? "/home" : "/");
+</script>
+</body>
+</html>

@@ -151,3 +151,32 @@ input:focus, textarea:focus, select:focus { outline: none; border-color: var(--a
 .photo-btn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 .toast { background: var(--ink); color: #fff; border-radius: 14px; padding: 10px 14px; margin-top: 10px; font-size: 15px; }
 .badge { display: inline-block; font-size: 12px; font-weight: 800; padding: 3px 10px; border-radius: 999px; background: #f3f0ff; color: #4b3f8f; }
+
+/* conflict button */
+.conflict-btn {
+  display: block; text-align: center; font-weight: 800; text-decoration: none;
+  background: var(--calm); color: #fff; border-radius: 999px; padding: 14px 20px;
+  margin-bottom: 18px; box-shadow: 0 6px 18px rgba(124, 140, 217, 0.35);
+}
+.sample-note { text-align: center; font-size: 13px; font-weight: 700; color: #4b3f8f; background: #f3f0ff; border-radius: 999px; padding: 6px 12px; margin-bottom: 14px; }
+
+/* weekly board */
+.week .headline { font-size: 20px; font-weight: 900; color: var(--accent); margin-bottom: 6px; }
+.area { display: flex; gap: 14px; align-items: flex-start; padding: 14px 0; border-bottom: 2px dashed var(--line); }
+.area:last-of-type { border-bottom: 0; }
+.area-icon { font-size: 30px; line-height: 1; width: 44px; height: 44px; border-radius: 14px; background: var(--accent-soft); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.area-label { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: var(--soft); }
+.name-pink { color: var(--pink); } .name-blue { color: var(--blue); }
+.name-orange { color: var(--orange); } .name-green { color: var(--green); }
+.message { border-radius: 18px; padding: 16px; margin-top: 14px; font-size: 18px; font-weight: 700; line-height: 1.45; }
+.message.c-pink-soft { background: var(--pink-soft); } .message.c-blue-soft { background: var(--blue-soft); }
+.message.c-orange-soft { background: var(--orange-soft); } .message.c-green-soft { background: var(--green-soft); }
+.fact { border: 3px solid #f6c56b; }
+
+/* conflict page */
+.bubble { border-radius: 18px; padding: 14px 16px; margin-bottom: 10px; }
+.bubble.ask { margin-left: 24px; }
+.bubble.ai { background: #f3f0ff; margin-right: 24px; }
+.bubble .meta { font-size: 13px; color: var(--soft); margin-bottom: 4px; font-weight: 700; }
+.bubble.c-pink-soft { background: var(--pink-soft); } .bubble.c-blue-soft { background: var(--blue-soft); }
+.bubble.c-orange-soft { background: var(--orange-soft); } .bubble.c-green-soft { background: var(--green-soft); }

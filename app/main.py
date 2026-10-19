@@ -1,5 +1,6 @@
 """51/51 server: saves everything, talks to the AI, and guards each partner's privacy."""
 import json
+import re
 import secrets
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -9,7 +10,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import ai, db
+from . import agents, ai, db
 
 STATIC = Path(__file__).resolve().parent.parent / "static"
 COLOURS = ["pink", "blue", "orange", "green"]
@@ -26,7 +27,7 @@ def startup() -> None:
 
 # ---------- pages ----------
 for route, page in {"/": "index.html", "/onboarding": "onboarding.html",
-                    "/home": "home.html"}.items():
+                    "/home": "home.html", "/conflict": "conflict.html", "/enter": "enter.html"}.items():
     def _page(page=page):
         return FileResponse(STATIC / page)
     app.add_api_route(route, _page, include_in_schema=False)
@@ -154,16 +155,83 @@ def week_entries(conn, couple_id: int, start: datetime):
              "kind": r["kind"], "area": r["area"], "summary": r["summary"]} for r in rows]
 
 
+def shared_fact_question(me, partner) -> str | None:
+    """Obvious shared facts must match (number and ages of children). Salary etc. are never compared."""
+    if partner is None or me["kids_count"] is None or partner["kids_count"] is None:
+        return None
+    if me["kids_count"] != partner["kids_count"]:
+        return (f"Quick check: you said {me['kids_count']} children, but {partner['name']} said "
+                f"{partner['kids_count']}. Which is right? Fix it together below.")
+    ages = lambda p: sorted(re.findall(r"\d+", p["kids_ages"] or ""))
+    if ages(me) and ages(partner) and ages(me) != ages(partner):
+        return (f"Quick check: you and {partner['name']} gave different ages for your children "
+                f"(you: {me['kids_ages']}; {partner['name']}: {partner['kids_ages']}). Which is right?")
+    return None
+
+
+def get_board(conn, me, partner, cache_key: str, entries) -> dict | None:
+    if partner is None or not entries:
+        return None
+    a, b = sorted([me, partner], key=lambda p: p["id"])
+    fingerprint = f"{len(entries)}:{max(e['id'] for e in entries)}:{a['kids_count']}:{b['kids_count']}"
+    row = conn.execute("SELECT * FROM board_cache WHERE couple_id=? AND week_start=?",
+                       (me["couple_id"], cache_key)).fetchone()
+    if row and row["fingerprint"] == fingerprint:
+        board = json.loads(row["data"])
+    else:
+        try:
+            board = agents.weekly_board(a, b, entries)
+        except ai.AIError:
+            if row:
+                board = json.loads(row["data"])
+                board["stale"] = True
+                return board
+            return {"error": "The AI is resting for a minute. Try again shortly."}
+        board["messages"] = {str(k): v for k, v in board["messages"].items()}
+        conn.execute("INSERT OR REPLACE INTO board_cache (couple_id, week_start, fingerprint, data) VALUES (?,?,?,?)",
+                     (me["couple_id"], cache_key, fingerprint, json.dumps(board)))
+    return board
+
+
 @app.get("/api/home")
 def home(x_partner_key: str | None = Header(default=None),
          x_tz_offset: int = Header(default=0)):
     with db.connect() as conn:
         me = me_from_key(conn, x_partner_key)
         partner = other_partner(conn, me)
-        code = conn.execute("SELECT code FROM couples WHERE id=?", (me["couple_id"],)).fetchone()["code"]
-        entries = week_entries(conn, me["couple_id"], week_start_utc(x_tz_offset))
-    return {"me": public(me), "partner": public(partner), "code": code,
-            "entries": entries, "ai_mode": ai.mode()}
+        couple = conn.execute("SELECT * FROM couples WHERE id=?", (me["couple_id"],)).fetchone()
+        if couple["is_sample"]:  # sample couple: always "the last seven days", so the demo works any day
+            start, cache_key = datetime.now(timezone.utc) - timedelta(days=7), "rolling"
+        else:
+            start = week_start_utc(x_tz_offset)
+            cache_key = start.isoformat()
+        entries = week_entries(conn, me["couple_id"], start)
+        board = get_board(conn, me, partner, cache_key, entries)
+    week = None
+    if board is not None and "error" not in board:
+        # each partner only ever receives THEIR OWN message
+        week = {"areas": board["areas"], "headline": board.get("headline", ""),
+                "message": board["messages"].get(str(me["id"]), ""), "stale": board.get("stale", False)}
+    elif board is not None:
+        week = {"error": board["error"]}
+    return {"me": public(me), "partner": public(partner), "code": couple["code"],
+            "sample": bool(couple["is_sample"]), "entries": entries, "ai_mode": ai.mode(),
+            "week": week, "fact_question": shared_fact_question(me, partner),
+            "my_kids": {"count": me["kids_count"], "ages": me["kids_ages"]}}
+
+
+class KidsFix(BaseModel):
+    kids_count: int = Field(ge=0, le=20)
+    kids_ages: str = ""
+
+
+@app.post("/api/me/kids")
+def fix_kids(body: KidsFix, x_partner_key: str | None = Header(default=None)):
+    with db.connect() as conn:
+        me = me_from_key(conn, x_partner_key)
+        conn.execute("UPDATE partners SET kids_count=?, kids_ages=? WHERE id=?",
+                     (body.kids_count, body.kids_ages.strip(), me["id"]))
+    return {"ok": True}
 
 
 MAX_PHOTO = 8 * 1024 * 1024
@@ -216,3 +284,55 @@ async def add_entry(text: str = Form(default=""), photo: UploadFile | None = Fil
 @app.get("/api/ai-check")
 def ai_check():
     return ai.check()
+
+
+# ---------- conflict button ----------
+class ConflictBody(BaseModel):
+    question: str = Field(min_length=3, max_length=1000)
+
+
+def recent_entries(conn, couple_id: int, days: int = 28):
+    since = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+    rows = conn.execute("SELECT * FROM entries WHERE couple_id=? AND created_at>=? ORDER BY created_at",
+                        (couple_id, since)).fetchall()
+    return [dict(r) for r in rows]
+
+
+@app.post("/api/conflicts")
+def ask_conflict(body: ConflictBody, x_partner_key: str | None = Header(default=None)):
+    with db.connect() as conn:
+        me = me_from_key(conn, x_partner_key)
+        partner = other_partner(conn, me)
+        if partner is None:
+            raise HTTPException(409, "Your partner hasn't joined yet, so there's nobody to mediate with.")
+        entries = recent_entries(conn, me["couple_id"])
+    try:
+        reply = agents.conflict_reply(me, partner, body.question.strip(), entries)
+    except ai.AIError:
+        raise HTTPException(503, "The AI is resting for a minute. Take a breath and try again shortly. 🌿")
+    created = datetime.now(timezone.utc).isoformat()
+    with db.connect() as conn:
+        cid = conn.execute("INSERT INTO conflicts (couple_id, partner_id, question, reply, created_at)"
+                           " VALUES (?,?,?,?,?)",
+                           (me["couple_id"], me["id"], body.question.strip(), reply, created)).lastrowid
+    return {"id": cid, "reply": reply, "created_at": created}
+
+
+@app.get("/api/conflicts")
+def list_conflicts(x_partner_key: str | None = Header(default=None)):
+    with db.connect() as conn:
+        me = me_from_key(conn, x_partner_key)
+        partner = other_partner(conn, me)
+        rows = conn.execute("SELECT * FROM conflicts WHERE couple_id=? ORDER BY created_at DESC",
+                            (me["couple_id"],)).fetchall()
+    return {"me": public(me), "partner": public(partner),
+            "conflicts": [{"id": r["id"], "partner_id": r["partner_id"], "question": r["question"],
+                           "reply": r["reply"], "created_at": r["created_at"]} for r in rows]}
+
+
+# ---------- sample couple (for trying the app and the demo video) ----------
+@app.post("/api/demo")
+def create_demo():
+    from .sample import create_sample_couple
+    with db.connect() as conn:
+        return create_sample_couple(conn, _new_code(conn))

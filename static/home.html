@@ -18,6 +18,20 @@
     <div id="couple" class="row"></div>
   </div>
 
+  <a class="conflict-btn" href="/conflict">😤 Something's bothering me</a>
+
+  <div class="sample-note hidden" id="sample">Sample couple · invented data for trying 51/51</div>
+
+  <div class="card fact hidden" id="fact">
+    <h3>🤔 Let's get the facts straight</h3>
+    <p id="fact-text"></p>
+    <form id="fact-form" class="row">
+      <input id="fact-count" type="number" min="0" max="20" style="width:90px" aria-label="Number of children">
+      <input id="fact-ages" placeholder="Ages" style="flex:1; min-width:140px" aria-label="Ages">
+      <button type="submit">Update my answer</button>
+    </form>
+  </div>
+
   <div class="card soft hidden" id="waiting">
     <h3>Waiting for your partner 💌</h3>
     <p>Give them this code. They choose <b>"I have my partner's code"</b>.</p>
@@ -50,6 +64,12 @@
     <div id="today-list" style="margin-top:12px"></div>
   </div>
 
+  <div class="card week" id="week">
+    <h2>This week</h2>
+    <p class="headline hidden" id="headline"></p>
+    <div id="week-body"></div>
+  </div>
+
   <p class="small muted" style="text-align:center">
     <button class="linkish" onclick="if(confirm('Leave 51/51 on this browser?')) forget()">Not you? Leave on this browser</button>
   </p>
@@ -74,7 +94,71 @@
     document.getElementById("waiting").classList.toggle("hidden", !!h.partner);
     document.getElementById("code").textContent = h.code;
     document.getElementById("practice").classList.toggle("hidden", h.ai_mode !== "practice");
+    document.getElementById("sample").classList.toggle("hidden", !h.sample);
     drawToday(h);
+    drawWeek(h);
+    drawFact(h);
+  }
+
+  function drawFact(h) {
+    const box = document.getElementById("fact");
+    box.classList.toggle("hidden", !h.fact_question);
+    if (!h.fact_question) return;
+    document.getElementById("fact-text").textContent = h.fact_question;
+    document.getElementById("fact-count").value = h.my_kids.count ?? "";
+    document.getElementById("fact-ages").value = h.my_kids.ages || "";
+  }
+  document.getElementById("fact-form").onsubmit = async (ev) => {
+    ev.preventDefault();
+    try {
+      await api("/api/me/kids", { method: "POST", json: {
+        kids_count: Number(document.getElementById("fact-count").value || 0),
+        kids_ages: document.getElementById("fact-ages").value } });
+      await load();
+    } catch (ex) { alert(ex.message); }
+  };
+
+  function drawWeek(h) {
+    const body = document.getElementById("week-body");
+    const headline = document.getElementById("headline");
+    body.innerHTML = "";
+    headline.classList.add("hidden");
+    if (!h.partner) {
+      body.append(el("div", { class: "empty" }, el("span", { class: "big" }, "💌"),
+        "Your week together starts when your partner joins."));
+      return;
+    }
+    if (!h.week) {
+      body.append(el("div", { class: "empty" }, el("span", { class: "big" }, "🌱"),
+        "Nothing logged this week yet.", el("br"), "Log your first thing, and your agents will tell the story of your week."));
+      return;
+    }
+    if (h.week.error) {
+      body.append(el("div", { class: "empty" }, el("span", { class: "big" }, "☕"), h.week.error));
+      return;
+    }
+    if (h.week.headline) { headline.textContent = h.week.headline; headline.classList.remove("hidden"); }
+    for (const area of ["kids", "home", "money"]) {
+      const a = AREAS[area];
+      body.append(el("div", { class: "area" },
+        el("div", { class: "area-icon" }, a.icon),
+        el("div", {}, el("div", { class: "area-label" }, a.label), el("div", {}, colourNames(h.week.areas[area], h)))));
+    }
+    if (h.week.message) body.append(el("div", { class: "message c-" + h.me.colour + "-soft" },
+      el("div", { class: "small muted" }, "Just for you, " + h.me.name), h.week.message));
+    if (h.week.stale) body.append(el("p", { class: "small muted" }, "The AI is resting, so this is the last version."));
+  }
+
+  // Show each partner's name in their own colour inside the words.
+  function colourNames(text, h) {
+    const span = el("span");
+    const people = [h.me, h.partner].filter(Boolean);
+    const re = new RegExp("(" + people.map(p => p.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|") + ")", "g");
+    for (const part of String(text).split(re)) {
+      const p = people.find(x => x.name === part);
+      span.append(p ? el("b", { class: "name-" + p.colour }, part) : part);
+    }
+    return span;
   }
 
   function drawToday(h) {

@@ -119,8 +119,102 @@ def slice2(c):
     ok(ws == datetime(2026, 10, 18, 22, 0, tzinfo=timezone.utc), "week starts Monday midnight local time")
 
 
+def slice3(c):
+    from app import agents, ai
+    import re as _re
+    wife, husband, _ = onboard(c)
+    h = c.get("/api/home", headers=wife).json()
+    ok(h["week"] is None, "empty week -> invitation to log, no judgement")
+
+    for t in ["Picked up the kids from school", "Did the dishes", "Cooked dinner", "Picked up Sarah",
+              "Did the laundry"]:
+        c.post("/api/entries", data={"text": t}, headers=wife)
+    c.post("/api/entries", data={"text": "Paid the mortgage"}, headers=husband)
+    hw = c.get("/api/home", headers=wife).json()
+    hh = c.get("/api/home", headers=husband).json()
+    board_text = json.dumps(hw["week"]) + json.dumps(hh["week"])
+    ok(all(hw["week"]["areas"][a] for a in ("kids", "home", "money")), "board has words for kids, home, money")
+    ok(not _re.search(r"\d|%", json.dumps(hw["week"]["areas"]) + hw["week"]["message"] + hh["week"]["message"]),
+       "board and messages contain no numbers")
+    ok(hw["week"]["message"] != hh["week"]["message"], "uneven week -> each partner gets a different message")
+    ok("proud" in hw["week"]["message"].lower() or "thank" in hw["week"]["message"].lower(),
+       "the partner who did more is told they did a lot")
+    ok("thank" in hh["week"]["message"].lower(), "the other is told to say thank you")
+    no_private(board_text, "board never contains private answers")
+    ok("message" not in json.dumps(hh["week"]).replace('"message"', ""), "each partner only receives their own message")
+
+    # balanced week
+    w2, h2, _ = onboard(c)
+    for t in ["Picked up the kids", "Did the dishes", "Paid the bill"]:
+        c.post("/api/entries", data={"text": t}, headers=w2)
+        c.post("/api/entries", data={"text": t}, headers=h2)
+    a = c.get("/api/home", headers=w2).json()["week"]["message"]
+    b = c.get("/api/home", headers=h2).json()["week"]["message"]
+    ok(a == b and ("balanced" in a.lower() or "team" in a.lower()), "balanced week -> both praised")
+
+    # shared facts: 2 kids vs 3 kids
+    w3, h3, _ = onboard(c, husband={**HUSBAND, "kids_count": 3})
+    q = c.get("/api/home", headers=w3).json()["fact_question"]
+    ok(q and "Karim" in q, "different number of kids -> question on the board")
+    c.post("/api/me/kids", json={"kids_count": 2, "kids_ages": "4 and 7"}, headers=h3)
+    ok(c.get("/api/home", headers=w3).json()["fact_question"] is None, "question disappears once fixed")
+
+    # guards on what the (real) AI might write
+    real = ai.ask_json
+    ai_mode = ai.mode
+    ai.mode = lambda: "gemini"
+    calls = {"n": 0}
+    def fake(prompt, image=None, mime=None):
+        calls["n"] += 1
+        if "PRIVATE agent" in prompt:
+            return {"load": {"kids": 3, "home": 2, "money": 1}, "note": "private"}
+        return {"areas": {"kids": "Leila did 80% of the 5 pickups", "home": "Shared the home nicely",
+                          "money": "Karim covered the money"},
+                "balance": "a_more", "headline": "Week 42!",
+                "messages": {"Leila": "You did a lot, be proud.", "Karim": "Say thank you to Leila."}}
+    ai.ask_json = fake
+    with __import__("app.db", fromlist=["connect"]).connect() as conn:
+        rows = conn.execute("SELECT * FROM partners ORDER BY id LIMIT 2").fetchall()
+    board = agents.weekly_board(rows[0], rows[1], [])
+    ok(not _re.search(r"\d|%", json.dumps(board["areas"]) + board["headline"]), "numbers from the AI are removed")
+    def leaky(prompt, image=None, mime=None):
+        if "PRIVATE agent" in prompt:
+            return {"load": {"kids": 3, "home": 2, "money": 1}, "note": "x"}
+        return {"areas": {"kids": "She went part-time after our second child", "home": "ok", "money": "ok"},
+                "balance": "a_more", "headline": "",
+                "messages": {"Leila": "hi", "Karim": "hi"}}
+    ai.ask_json = leaky
+    board = agents.weekly_board(rows[0], rows[1], [])
+    ok("part-time" not in json.dumps(board), "a private answer written by the AI is caught and replaced")
+    ai.ask_json, ai.mode = real, ai_mode
+
+
+def slice4(c):
+    from app import sample
+    d = c.post("/api/demo").json()
+    leila = {"X-Partner-Key": d["partners"][0]["link"].split("key=")[1]}
+    karim = {"X-Partner-Key": d["partners"][1]["link"].split("key=")[1]}
+    h = c.get("/api/home", headers=leila).json()
+    ok(h["sample"] and h["week"] and h["week"]["areas"]["kids"], "sample couple has a full week")
+    ok(c.get("/enter").status_code == 200 and c.get("/conflict").status_code == 200, "conflict and enter pages load")
+
+    r = c.post("/api/conflicts", json={"question": "I'm tired of always doing the dishes!"}, headers=leila)
+    ok(r.status_code == 200 and "Karim" in r.json()["reply"], "dishes complaint -> reply proposes Karim takes turns")
+    ok("Leila" in r.json()["reply"] and "every time" in r.json()["reply"], "reply points to the pattern in the logs")
+    seen = c.get("/api/conflicts", headers=karim).json()["conflicts"]
+    ok(seen and seen[0]["question"].startswith("I'm tired"), "Karim can see the question and the reply")
+    reply = seen[0]["reply"].lower()
+    ok(not any(p in reply for p in ["part-time", "guilty", "half past four", "afford"]),
+       "reply reveals no private answers")
+    solo_key = c.post("/api/couples", json=WIFE).json()["key"]
+    ok(c.post("/api/conflicts", json={"question": "dishes"}, headers={"X-Partner-Key": solo_key}).status_code == 409,
+       "no conflict mediation before the partner joins")
+
+
 if __name__ == "__main__":
     with TestClient(app) as c:
         slice1(c)
         slice2(c)
+        slice3(c)
+        slice4(c)
     print("All checks passed.")

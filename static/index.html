@@ -28,6 +28,16 @@
     </div>
   </div>
 
+  <div class="card soft" id="demo-card">
+    <h3>Just curious? 👀</h3>
+    <p class="muted">Try a sample couple, Leila and Karim, with a few invented weeks already logged.</p>
+    <button class="secondary" id="demo">Try the sample couple</button>
+    <div id="demo-links" class="hidden" style="margin-top:12px">
+      <p>Open each partner in a <b>different</b> browser window (one normal, one private):</p>
+      <div class="stack" id="demo-list"></div>
+    </div>
+  </div>
+
   <div class="card hidden" id="code-card">
     <h2>Enter your partner's code</h2>
     <p class="muted">Your partner sees it after answering their questions. It looks like <b>MOON-42</b>.</p>
@@ -58,6 +68,24 @@
     codeCard.classList.add("hidden");
     choose.classList.remove("hidden");
   };
+  document.getElementById("demo").onclick = async () => {
+    const btn = document.getElementById("demo");
+    btn.disabled = true;
+    try {
+      const d = await api("/api/demo", { method: "POST" });
+      const list = document.getElementById("demo-list");
+      for (const p of d.partners) {
+        const url = location.origin + p.link;
+        list.append(el("div", { class: "row" },
+          el("a", { class: "btn c-" + p.colour, href: p.link }, "Open as " + p.name),
+          el("button", { class: "secondary small", type: "button",
+            onclick: () => { navigator.clipboard && navigator.clipboard.writeText(url); } }, "Copy link")));
+      }
+      document.getElementById("demo-links").classList.remove("hidden");
+      btn.classList.add("hidden");
+    } catch (ex) { alert(ex.message); btn.disabled = false; }
+  };
+
   document.getElementById("code-form").onsubmit = async (e) => {
     e.preventDefault();
     errorBox.classList.add("hidden");
