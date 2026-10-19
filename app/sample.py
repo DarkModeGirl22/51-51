@@ -1,4 +1,4 @@
-"""SAMPLE DATA: a demo couple (Leila & Karim) with a few weeks of logs.
+"""SAMPLE DATA: a demo couple (Emily & Ryan) with a few weeks of logs.
 
 Used by the "Try the sample couple" button and the demo video. Everything here is
 invented and the couple is flagged is_sample=1, so the app labels it clearly.
@@ -8,7 +8,7 @@ import secrets
 from datetime import datetime, timedelta, timezone
 
 LEILA = {
-    "name": "Leila", "colour": "pink", "kids_count": 2, "kids_ages": "4 and 7",
+    "name": "Emily", "colour": "pink", "kids_count": 2, "kids_ages": "4 and 7",
     "material": {"people_at_home": "4", "married_for": "9 years", "job": "nurse, part-time",
                  "working_hours": "9am to 3pm, Monday to Thursday", "who_earns_more": "partner"},
     "immaterial": {"sacrifices": "I moved to part-time after our second child was born",
@@ -18,28 +18,28 @@ LEILA = {
     "extra_note": "",
 }
 KARIM = {
-    "name": "Karim", "colour": "blue", "kids_count": 2, "kids_ages": "4 and 7",
+    "name": "Ryan", "colour": "blue", "kids_count": 2, "kids_ages": "4 and 7",
     "material": {"people_at_home": "4", "married_for": "9 years", "job": "site engineer",
                  "working_hours": "7am until 8pm, often Saturdays", "who_earns_more": "me"},
-    "immaterial": {"sacrifices": "I took the job with long hours so we could afford the bigger flat",
+    "immaterial": {"sacrifices": "I took the job with long hours so we could afford the bigger house",
                    "feelings": "I barely see the kids on weekdays and I feel guilty about it",
                    "how_partner_sees_it": "She thinks I don't do anything at home",
                    "wishes": "I want her to see that the money side is effort too"},
-    "extra_note": "School pickups at half past four are impossible with my hours.",
+    "extra_note": "School pickups at 3:30 are impossible with my hours.",
 }
 
-# Roles: "W" = the woman's side (Leila's story), "M" = the man's side (Karim's story).
+# Roles: "W" = the woman's side (Emily's story), "M" = the man's side (Ryan's story).
 THIS_WEEK = [
-    (6, 16, "W", "kids", "Picked up Sarah and Adam from school"),
+    (6, 16, "W", "kids", "Picked up Lily and Noah from school"),
     (6, 18, "M", "money", "Paid this month's mortgage"),
-    (5, 16, "W", "kids", "Picked up Sarah and Adam from school"),
+    (5, 16, "W", "kids", "Picked up Lily and Noah from school"),
     (5, 20, "W", "home", "Did the dishes after dinner"),
     (4, 16, "W", "kids", "Picked up the kids from school, then swimming lesson"),
     (4, 21, "M", "money", "Paid the electricity and internet bills"),
     (3, 19, "W", "home", "Cooked dinner and did the dishes"),
-    (3, 20, "M", "kids", "Helped Adam with his reading homework"),
-    (2, 11, "M", "money", "Receipt: weekly groceries at Carrefour, about 140 euros"),
-    (2, 16, "W", "kids", "Picked up Sarah and Adam from school"),
+    (3, 20, "M", "kids", "Helped Noah with his reading homework"),
+    (2, 11, "M", "money", "Receipt: weekly groceries at Trader Joe's, about $140"),
+    (2, 16, "W", "kids", "Picked up Lily and Noah from school"),
     (1, 10, "M", "kids", "Took the kids to the park all morning"),
     (1, 20, "W", "home", "Did the dishes after dinner"),
     (0, 9, "W", "home", "Laundry: two loads washed and folded"),
@@ -57,9 +57,9 @@ def two_months_of_logs():
         elif days % 2 == 0 or days in (9, 11):
             log.append((days, 20, "W", "home", "Did the dishes after dinner"))
         if weekday in (1, 2, 3, 4):
-            log.append((days, 16, "W", "kids", "Picked up Sarah and Adam from school"))
+            log.append((days, 16, "W", "kids", "Picked up Lily and Noah from school"))
         if weekday == 5:
-            log.append((days, 10, "M", "money", "Receipt: weekly groceries at Carrefour"))
+            log.append((days, 10, "M", "money", "Receipt: weekly groceries at Trader Joe's"))
             log.append((days, 15, "M", "kids", "Took the kids to football practice"))
         if weekday == 6:
             log.append((days, 12, "W", "home", "Cooked Sunday lunch for the family"))
@@ -68,7 +68,7 @@ def two_months_of_logs():
             log.append((days, 19, "M", "money", "Paid this month's mortgage"))
             log.append((days, 21, "M", "money", "Paid the electricity and internet bills"))
         if days in (45, 31):
-            log.append((days, 17, "W", "kids", "Took Adam to the dentist"))
+            log.append((days, 17, "W", "kids", "Took Noah to the dentist"))
             log.append((days, 9, "W", "money", "Paid the school canteen"))
     return log + THIS_WEEK
 
@@ -85,7 +85,7 @@ def _insert_partner(conn, couple_id, p) -> tuple[int, str]:
 
 def create_sample_couple(conn, code: str, me: dict, role: str) -> dict:
     """`me` = the visitor's own quick answers; `role` = "woman" or "man".
-    Their invented partner (Karim or Leila) and two months of logs are added around them."""
+    Their invented partner (Ryan or Emily) and two months of logs are added around them."""
     couple_id = conn.execute("INSERT INTO couples (code, is_sample) VALUES (?, 1)", (code,)).lastrowid
     partner = dict(KARIM if role == "woman" else LEILA)
     if partner["colour"] == me["colour"]:

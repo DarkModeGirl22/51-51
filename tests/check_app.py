@@ -194,11 +194,11 @@ def slice4(c):
     import re as _re
     from app import sample
     from app import db as _db
-    d = c.post("/api/demo", json={"role": "woman", "name": "Leila", "colour": "pink",
+    d = c.post("/api/demo", json={"role": "woman", "name": "Emily", "colour": "pink",
                                   "material": {"job": ""}, "immaterial": {}, "extra_note": ""}).json()
     leila = {"X-Partner-Key": d["key"]}
     h = c.get("/api/home", headers=leila).json()
-    ok(h["sample"] and h["partner"]["name"] == "Karim", "sample: you join as the wife, Karim is already there")
+    ok(h["sample"] and h["partner"]["name"] == "Ryan", "sample: you join as the wife, Ryan is already there")
     wk = c.get("/api/week", headers=leila).json()["week"]
     ok(wk and wk["areas"]["kids"], "sample couple has a full week on the board")
     ok(len(h["entries"]) > 10, "the home shows the whole week day by day, not just today")
@@ -213,7 +213,7 @@ def slice4(c):
                          (d["key"],)).fetchone()[0]
         first = conn.execute("SELECT MIN(e.created_at) FROM entries e JOIN partners p ON p.id=e.partner_id"
                              " WHERE p.couple_id=(SELECT couple_id FROM partners WHERE key=?)", (d["key"],)).fetchone()[0]
-        karim_key = conn.execute("SELECT key FROM partners WHERE name='Karim' AND couple_id="
+        karim_key = conn.execute("SELECT key FROM partners WHERE name='Ryan' AND couple_id="
                                  "(SELECT couple_id FROM partners WHERE key=?)", (d["key"],)).fetchone()[0]
     from datetime import datetime as _dt, timezone as _tz
     ok(n > 40 and (_dt.now(_tz.utc) - _dt.fromisoformat(first)).days >= 50, "sample has about two months of history")
@@ -221,16 +221,16 @@ def slice4(c):
     m = c.post("/api/demo", json={"role": "man", "name": "Sam", "colour": "pink",
                                   "material": {}, "immaterial": {}, "extra_note": ""}).json()
     hm = c.get("/api/home", headers={"X-Partner-Key": m["key"]}).json()
-    ok(hm["partner"]["name"] == "Leila" and hm["partner"]["colour"] != "pink", "as the husband, Leila is your partner in another colour")
+    ok(hm["partner"]["name"] == "Emily" and hm["partner"]["colour"] != "pink", "as the husband, Emily is your partner in another colour")
     ok(c.get("/sample").status_code == 200 and c.get("/conflict").status_code == 200, "sample and conflict pages load")
 
     r = c.post("/api/conflicts", json={"question": "I'm tired of always doing the dishes!"}, headers=leila)
-    ok(r.status_code == 200 and "Karim" in r.json()["reply"], "dishes complaint -> reply proposes Karim takes turns")
-    ok("Leila" in r.json()["reply"] and "every time" in r.json()["reply"], "reply points to the pattern in the logs")
+    ok(r.status_code == 200 and "Ryan" in r.json()["reply"], "dishes complaint -> reply proposes Ryan takes turns")
+    ok("Emily" in r.json()["reply"] and "every time" in r.json()["reply"], "reply points to the pattern in the logs")
     seen = c.get("/api/conflicts", headers=karim).json()["conflicts"]
-    ok(seen and seen[0]["question"].startswith("I'm tired"), "Karim can see the question and the reply")
+    ok(seen and seen[0]["question"].startswith("I'm tired"), "Ryan can see the question and the reply")
     reply = seen[0]["reply"].lower()
-    ok(not any(p in reply for p in ["part-time", "guilty", "half past four", "afford"]),
+    ok(not any(p in reply for p in ["part-time", "guilty", "3:30", "afford"]),
        "reply reveals no private answers")
     solo_key = c.post("/api/couples", json=WIFE).json()["key"]
     ok(c.post("/api/conflicts", json={"question": "dishes"}, headers={"X-Partner-Key": solo_key}).status_code == 409,

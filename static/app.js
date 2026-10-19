@@ -53,11 +53,34 @@ function whoChip(p) {
 }
 
 const AREAS = {
-  kids: { icon: "🧸", label: "Kids" },
-  home: { icon: "🏡", label: "Home" },
-  money: { icon: "💰", label: "Money" },
-  unsorted: { icon: "✨", label: "To sort" },
+  kids: { label: "Kids" }, home: { label: "Home" }, money: { label: "Money" }, unsorted: { label: "To sort" },
 };
+
+// Small line icons (no emoji), drawn as SVG.
+const ICON_PATHS = {
+  kids: ["M9 7.5a2.5 2.5 0 1 0 0-.01", "M4.5 20v-1.5a4.5 4.5 0 0 1 9 0V20", "M17 10a2 2 0 1 0 0-.01", "M15 20v-1a3.5 3.5 0 0 1 5.5-2.9"],
+  home: ["M3.5 11 12 4l8.5 7", "M6 9.5V20h12V9.5", "M10 20v-5h4v5"],
+  money: ["M3.5 6.5h17v11h-17z", "M12 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 1 0 0-5", "M6.5 9.5v5M17.5 9.5v5"],
+  unsorted: ["M12 4a8 8 0 1 0 0 16 8 8 0 1 0 0-16", "M12 8v5M12 16h.01"],
+  bell: ["M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 1.5h-15z", "M10 20.5a2 2 0 0 0 4 0"],
+  talk: ["M4 5h16v11H10l-5 4v-4H4z"],
+  camera: ["M4 8h3.5l2-2.5h5l2 2.5H20v11H4z", "M12 10.5a3 3 0 1 0 0 6 3 3 0 1 0 0-6"],
+  receipt: ["M6 3h12v18l-3-1.8-3 1.8-3-1.8L6 21z", "M9 8h6M9 12h6M9 16h3"],
+  heart: ["M12 20s-7.5-4.6-7.5-10.2A4.2 4.2 0 0 1 12 7.3a4.2 4.2 0 0 1 7.5 2.5C19.5 15.4 12 20 12 20z"],
+};
+function icon(name) {
+  const ns = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  svg.setAttribute("class", "ico");
+  svg.setAttribute("aria-hidden", "true");
+  for (const d of ICON_PATHS[name] || ICON_PATHS.unsorted) {
+    const p = document.createElementNS(ns, "path");
+    p.setAttribute("d", d);
+    svg.append(p);
+  }
+  return svg;
+}
 
 function isToday(iso) {
   const d = new Date(iso), n = new Date();

@@ -5,33 +5,30 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>51/51 · Home</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,600;0,800;0,900;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-<main>
-  <div class="topbar">
+<main class="wide">
+  <header class="topbar">
     <div class="brand" style="margin:0">
       <div class="dots"><i></i><i></i></div>
       <div class="logo">51<span>/</span>51</div>
     </div>
-    <div id="couple" class="row"></div>
-  </div>
-
-  <div class="sample-note hidden" id="sample">Sample couple · two months of invented life, read by the real AI</div>
-
-  <a class="conflict-btn" href="/conflict">😤 Something's bothering me</a>
-
-  <!-- the message just for you (from the agents) -->
-  <div class="card message-card fade" id="message-card">
-    <div class="small muted" id="message-for">Just for you</div>
-    <div class="message-text" id="message-text">
-      <span class="thinking">Your agents are talking about your week<i>.</i><i>.</i><i>.</i></span>
+    <div class="head-actions">
+      <div id="couple" class="row" style="margin-right:6px"></div>
+      <a class="talk-btn" href="/conflict" id="talk-link"></a>
+      <div class="notif-wrap">
+        <button class="bell" id="bell" aria-label="Notifications" aria-expanded="false" aria-controls="notif-panel"></button>
+        <div class="notif-panel hidden" id="notif-panel" role="dialog" aria-label="Notifications"></div>
+      </div>
     </div>
-  </div>
+  </header>
+
+  <div class="sample-note hidden" id="sample">Sample couple: two months of invented life, read by the real AI.</div>
 
   <div class="card fact hidden" id="fact">
-    <h3>🤔 Let's get the facts straight</h3>
+    <h3>Let's get the facts straight</h3>
     <p id="fact-text"></p>
     <form id="fact-form" class="row">
       <input id="fact-count" type="number" min="0" max="20" style="width:90px" aria-label="Number of children">
@@ -41,55 +38,61 @@
   </div>
 
   <div class="card soft hidden" id="waiting">
-    <h3>Waiting for your partner 💌</h3>
-    <p>Give them this code. They choose <b>"I have my partner's code"</b>.</p>
+    <h3>Waiting for your partner</h3>
+    <p>Give them this code. They choose "I have my partner's code".</p>
     <div class="code-box" id="code"></div>
-    <p class="small muted">You can already start logging what you do.</p>
+    <p class="small muted" style="margin:0">You can already start logging what you do.</p>
   </div>
 
-  <div class="card" id="add">
-    <h2>What did you do?</h2>
-    <form id="add-form">
-      <div class="add-row">
-        <input id="add-text" maxlength="500" placeholder="Picked up Sarah from school…">
-        <button type="submit" id="add-btn">Add</button>
+  <div class="layout">
+    <section class="left">
+      <div class="card" id="add">
+        <h2>What did you do?</h2>
+        <form id="add-form" style="margin-top:12px">
+          <div class="add-row">
+            <input id="add-text" maxlength="500" placeholder="Picked up Lily from school" aria-label="What did you do?">
+            <button type="submit" id="add-btn">Add</button>
+          </div>
+          <div class="row" style="margin-top:10px">
+            <label class="btn secondary photo-btn" style="margin:0" id="photo-label">Add a receipt photo
+              <input type="file" id="add-photo" accept="image/*">
+            </label>
+            <span class="small muted" id="photo-name"></span>
+          </div>
+        </form>
+        <div class="toast hidden" id="add-toast" role="status"></div>
       </div>
-      <div class="row" style="margin-top:10px">
-        <label class="btn secondary photo-btn" style="margin:0">📸 Add a receipt photo
-          <input type="file" id="add-photo" accept="image/*">
-        </label>
-        <span class="small muted" id="photo-name"></span>
+
+      <div class="card" id="days">
+        <div class="panel-title"><h2>Day by day</h2></div>
+        <div id="days-list"></div>
       </div>
-    </form>
-    <div class="toast hidden" id="add-toast"></div>
-  </div>
+    </section>
 
-  <div class="card week" id="week">
-    <div class="row" style="justify-content:space-between">
-      <h2 style="margin:0">This week</h2>
-      <span class="badge hidden" id="practice">Practice AI</span>
-    </div>
-    <p class="headline hidden" id="headline"></p>
-    <div id="week-body" style="margin-top:8px"></div>
-  </div>
+    <section class="right">
+      <div class="card week" id="week">
+        <div class="panel-title">
+          <h2>This week</h2>
+          <span class="badge hidden" id="practice">Practice AI</span>
+        </div>
+        <p class="headline hidden" id="headline"></p>
+        <div id="week-body"></div>
+      </div>
 
-  <div class="card" id="days">
-    <h2>Day by day</h2>
-    <div id="days-list" style="margin-top:8px"></div>
-  </div>
+      <div class="card hidden" id="story">
+        <div class="panel-title"><h2>Your story</h2></div>
+        <p class="muted small">The weeks before this one, told from what you both logged.</p>
+        <div id="story-list" class="timeline"></div>
+      </div>
 
-  <div class="card hidden" id="story">
-    <h2>Your story</h2>
-    <p class="muted small">How the weeks before this one went, told from what you both logged.</p>
-    <div id="story-list" class="timeline"></div>
-  </div>
-
-  <div class="card hidden" id="talks">
-    <div class="row" style="justify-content:space-between">
-      <h2 style="margin:0">Talks with the mediator</h2>
-      <a class="linkish" href="/conflict">See all</a>
-    </div>
-    <div id="talks-list" style="margin-top:12px"></div>
+      <div class="card hidden" id="talks">
+        <div class="panel-title">
+          <h2>Talks with the mediator</h2>
+          <a class="small" href="/conflict">See all</a>
+        </div>
+        <div id="talks-list"></div>
+      </div>
+    </section>
   </div>
 
   <p class="small muted" style="text-align:center">
@@ -118,27 +121,65 @@
     document.getElementById("practice").classList.toggle("hidden", H.ai_mode !== "practice");
     document.getElementById("sample").classList.toggle("hidden", !H.sample);
     drawFact(); drawDays(); drawStory(); drawTalks();
+    WEEK_MSG = null; drawNotifs();
     loadWeek();
   }
+
+  // ---------- notifications (the bell) ----------
+  let WEEK_MSG = null, notifOpen = false, seen = false;
+  const bell = document.getElementById("bell");
+  bell.append(icon("bell"));
+  document.getElementById("talk-link").append(icon("talk"), "Something's bothering me");
+  document.getElementById("photo-label").prepend(icon("camera"));
+
+  function drawNotifs() {
+    const panel = document.getElementById("notif-panel");
+    panel.innerHTML = "";
+    const items = [];
+    if (WEEK_MSG) items.push(el("div", { class: "notif" },
+      el("div", { class: "mark c-" + H.me.colour }, icon("heart")),
+      el("div", {}, el("div", { class: "when" }, "Just for you, " + H.me.name),
+        el("div", { class: "text" }, WEEK_MSG))));
+    if (H.partner && !WEEK_MSG) items.push(el("div", { class: "notif" },
+      el("div", { class: "mark", style: "background:var(--faint)" }, icon("heart")),
+      el("div", {}, el("div", { class: "text plain" }, thinking("Your agents are talking about your week")))));
+    const people = { [H.me.id]: H.me };
+    if (H.partner) people[H.partner.id] = H.partner;
+    for (const t of (H.talks || []).slice(0, 1)) {
+      const who = people[t.partner_id] || H.me;
+      items.push(el("div", { class: "notif" },
+        el("div", { class: "mark", style: "background:var(--calm)" }, icon("talk")),
+        el("div", {}, el("div", { class: "when" }, "The mediator answered " + who.name),
+          el("div", { class: "text plain" }, t.reply.length > 140 ? t.reply.slice(0, 140) + "…" : t.reply),
+          el("a", { href: "/conflict" }, "Open the conversation"))));
+    }
+    if (!items.length) items.push(el("div", { class: "notif" }, el("div", { class: "text plain muted" }, "No news yet.")));
+    panel.append(...items);
+    const old = bell.querySelector(".dot");
+    if (old) old.remove();
+    if (WEEK_MSG && !seen) bell.append(el("span", { class: "dot" }));
+  }
+  function toggleNotifs(open) {
+    notifOpen = open ?? !notifOpen;
+    document.getElementById("notif-panel").classList.toggle("hidden", !notifOpen);
+    bell.setAttribute("aria-expanded", String(notifOpen));
+    if (notifOpen && WEEK_MSG) { seen = true; drawNotifs(); }
+  }
+  bell.onclick = (e) => { e.stopPropagation(); toggleNotifs(); };
+  document.addEventListener("click", (e) => {
+    if (notifOpen && !document.getElementById("notif-panel").contains(e.target)) toggleNotifs(false);
+  });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && notifOpen) { toggleNotifs(false); bell.focus(); } });
 
   // ---------- the agents' view of the week (may take a few seconds) ----------
   async function loadWeek() {
     const body = document.getElementById("week-body");
-    const msgCard = document.getElementById("message-card");
-    const msgText = document.getElementById("message-text");
     document.getElementById("headline").classList.add("hidden");
+    body.innerHTML = "";
     if (!H.partner) {
-      msgCard.classList.add("hidden");
-      body.innerHTML = "";
-      body.append(empty("💌", "Your week together starts when your partner joins."));
+      body.append(empty("Your week together starts when your partner joins."));
       return;
     }
-    msgCard.classList.remove("hidden");
-    msgCard.className = "card message-card fade c-" + H.me.colour + "-soft";
-    document.getElementById("message-for").textContent = "Just for you, " + H.me.name;
-    msgText.innerHTML = "";
-    msgText.append(thinking("Your agents are talking about your week"));
-    body.innerHTML = "";
     for (const area of ["kids", "home", "money"]) body.append(areaRow(area, null, null));
 
     let w;
@@ -146,35 +187,32 @@
     catch (ex) { w = { error: ex.message }; }
 
     body.innerHTML = "";
-    msgText.innerHTML = "";
     if (!w) {
-      msgCard.classList.add("hidden");
-      body.append(empty("🌱", "Nothing logged this week yet. Log your first thing, and your agents will tell the story of your week."));
+      body.append(empty("Nothing logged this week yet. Add your first thing, and your agents will tell the story of your week."));
       return;
     }
-    if (w.error) {
-      msgText.append(w.error);
-      body.append(empty("☕", w.error));
-      return;
-    }
-    msgText.append(w.message || "");
+    if (w.error) { body.append(empty(w.error)); return; }
     if (w.headline) {
       const h = document.getElementById("headline");
       h.textContent = w.headline; h.classList.remove("hidden");
     }
     for (const area of ["kids", "home", "money"]) body.append(areaRow(area, w.areas[area], (w.lean || {})[area]));
     if (w.stale) body.append(el("p", { class: "small muted" }, "The AI is resting, so this is the last version."));
-    requestAnimationFrame(() => document.querySelectorAll(".plank[data-angle]").forEach(p =>
-      p.style.transform = "rotate(" + p.dataset.angle + "deg)"));
+    requestAnimationFrame(() => requestAnimationFrame(() => document.querySelectorAll(".plank[data-angle]").forEach(p =>
+      p.style.transform = "rotate(" + p.dataset.angle + "deg)")));
+    if (w.message) {
+      WEEK_MSG = w.message; seen = false; drawNotifs();
+      bell.classList.remove("ringing"); void bell.offsetWidth; bell.classList.add("ringing");
+    }
   }
 
   function areaRow(area, text, lean) {
     const a = AREAS[area];
     const words = text == null
       ? el("div", { class: "skeleton" }, el("i"), el("i"))
-      : el("div", { class: "fade" }, colourNames(text));
+      : el("div", { class: "week-voice" }, colourNames(text));
     return el("div", { class: "area" },
-      el("div", { class: "area-icon" }, a.icon),
+      el("div", { class: "area-icon" }, icon(area)),
       el("div", { style: "flex:1" },
         el("div", { class: "area-label" }, a.label), words,
         H.partner ? seesaw(lean) : null));
@@ -209,7 +247,7 @@
     const list = document.getElementById("days-list");
     list.innerHTML = "";
     if (!H.entries.length) {
-      list.append(empty("🌤️", "Nothing logged yet. A school run, a bill, a dinner: it all counts."));
+      list.append(empty("Nothing logged yet. A school run, a bill, a dinner: it all counts."));
       return;
     }
     const people = { [H.me.id]: H.me };
@@ -226,12 +264,14 @@
       for (const e of g.items) {
         const who = people[e.partner_id] || { name: "?", colour: "pink" };
         const area = AREAS[e.area] || AREAS.unsorted;
-        list.append(el("div", { class: "entry fade c-" + who.colour + "-soft" },
-          el("div", { class: "icon" }, e.kind === "photo" ? "🧾" : area.icon),
+        list.append(el("div", { class: "entry" },
+          el("span", { class: "swatch c-" + who.colour }),
           el("div", { class: "body" },
             el("div", {}, e.summary),
-            el("div", { class: "meta" }, who.name + " · " + timeOf(e.created_at),
-              el("span", { class: "tag" }, area.icon + " " + area.label)))));
+            el("div", { class: "meta" },
+              el("span", { class: "name-" + who.colour, style: "font-weight:600" }, who.name),
+              el("span", {}, timeOf(e.created_at)),
+              el("span", { class: "area-chip" }, icon(e.kind === "photo" ? "receipt" : (e.area in AREAS ? e.area : "unsorted")), area.label)))));
       }
     }
     if (groups.length > shown.length) {
@@ -250,13 +290,13 @@
     const people = { [H.me.id]: H.me, [H.partner.id]: H.partner };
     for (const w of H.story) {
       const leader = w.leader ? people[w.leader] : null;
-      const badge = leader
-        ? el("span", { class: "story-badge c-" + leader.colour + "-soft" }, "🌟 " + leader.name + " carried more")
-        : el("span", { class: "story-badge balanced" }, "⚖️ Balanced");
-      list.append(el("div", { class: "story-item fade" },
-        el("div", { class: "story-dot" + (leader ? " c-" + leader.colour : " balanced") }),
+      const lean = leader
+        ? el("span", { class: "story-lean" }, el("span", { class: "name-" + leader.colour, style: "font-weight:600" }, leader.name), " carried more")
+        : el("span", { class: "story-lean" }, "Balanced");
+      list.append(el("div", { class: "story-item" },
+        el("div", { class: "story-dot" + (leader ? " c-" + leader.colour : "") }),
         el("div", {},
-          el("div", { class: "row", style: "gap:8px" }, el("b", {}, w.label), badge),
+          el("div", { class: "story-head" }, el("b", {}, w.label), lean),
           el("div", { class: "story-text" }, colourNames(w.story)))));
     }
   }
@@ -273,10 +313,11 @@
     for (const t of H.talks) {
       const who = people[t.partner_id] || { name: "?", colour: "pink" };
       const when = new Date(t.created_at).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
-      list.append(el("div", { class: "bubble ask c-" + who.colour + "-soft" },
-        el("div", { class: "meta" }, who.name + " · " + when), t.question));
-      list.append(el("div", { class: "bubble ai" },
-        el("div", { class: "meta" }, "🕊️ Mediator, to both of you"), t.reply));
+      list.append(el("div", { class: "talk" },
+        el("div", { class: "bubble ask c-" + who.colour + "-soft" },
+          el("div", { class: "meta" }, who.name + ", " + when), t.question),
+        el("div", { class: "bubble ai" },
+          el("div", { class: "meta" }, "Mediator, to both of you"), t.reply)));
     }
   }
 
@@ -300,8 +341,8 @@
   };
 
   // ---------- helpers ----------
-  function empty(icon, text) {
-    return el("div", { class: "empty" }, el("span", { class: "big" }, icon), text);
+  function empty(text) {
+    return el("div", { class: "empty" }, text);
   }
   function thinking(text) {
     return el("span", { class: "thinking" }, text, el("i", {}, "."), el("i", {}, "."), el("i", {}, "."));
@@ -347,7 +388,7 @@
       const a = AREAS[r.area] || AREAS.unsorted;
       toast(r.note === "ai_down"
         ? "Saved! The AI is resting for a minute, so this one stays under \"To sort\"."
-        : "Saved under " + a.label + " " + a.icon + ". Your agents are looking at your week again.");
+        : "Saved under " + a.label + ". Your agents are looking at your week again.");
       await load();
     } catch (ex) {
       toast(ex.message);

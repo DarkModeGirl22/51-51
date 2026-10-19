@@ -369,7 +369,7 @@ def ask_conflict(body: ConflictBody, x_partner_key: str | None = Header(default=
     try:
         reply = agents.conflict_reply(me, partner, body.question.strip(), entries)
     except ai.AIError:
-        raise HTTPException(503, "The AI is resting for a minute. Take a breath and try again shortly. 🌿")
+        raise HTTPException(503, "The AI is resting for a minute. Take a breath and try again shortly.")
     created = datetime.now(timezone.utc).isoformat()
     with db.connect() as conn:
         cid = conn.execute("INSERT INTO conflicts (couple_id, partner_id, question, reply, created_at)"

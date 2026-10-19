@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>51/51 · Talk it out</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,600;0,800;0,900;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
@@ -47,8 +47,7 @@
     const list = document.getElementById("list");
     list.innerHTML = "";
     if (!d.conflicts.length) {
-      list.append(el("div", { class: "card" }, el("div", { class: "empty" }, el("span", { class: "big" }, "🕊️"),
-        "No conflicts so far. Lovely.")));
+      list.append(el("div", { class: "card" }, el("div", { class: "empty" }, "No conflicts so far. Lovely.")));
       return;
     }
     for (const c of d.conflicts) {
@@ -58,7 +57,7 @@
         el("div", { class: "bubble ask c-" + who.colour + "-soft" },
           el("div", { class: "meta" }, who.name + " · " + when), c.question),
         el("div", { class: "bubble ai" },
-          el("div", { class: "meta" }, "🕊️ 51/51 mediator, to both of you"), c.reply)));
+          el("div", { class: "meta" }, "Mediator, to both of you"), c.reply)));
     }
   }
 

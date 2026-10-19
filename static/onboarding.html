@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>51/51 · Getting to know you</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,600;0,800;0,900;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
@@ -32,7 +32,7 @@
     <!-- Step 2: material facts -->
     <section class="card step hidden" data-step="2">
       <h2>The facts of your home</h2>
-      <div class="private-note">🔒 <span>Only <b>your</b> agent sees these answers. Your partner never will.</span></div>
+      <div class="private-note"><span>Only <b>your</b> agent sees these answers. Your partner never will.</span></div>
       <label for="people">How many people live in your home?</label>
       <input id="people" type="number" min="1" max="20">
       <label for="married">How long have you been married?</label>
@@ -61,7 +61,7 @@
     <!-- Step 3: immaterial -->
     <section class="card step hidden" data-step="3">
       <h2>How it really feels</h2>
-      <div class="private-note">🔒 <span>Be honest. This stays between you and your agent.</span></div>
+      <div class="private-note"><span>Be honest. This stays between you and your agent.</span></div>
       <label for="sacrifices">What have you given up or changed for your family?</label>
       <textarea id="sacrifices" placeholder="e.g. I went part-time after our second child"></textarea>
       <label for="feel">How do you feel about how you share kids, home and money?</label>
@@ -82,13 +82,13 @@
 
   <!-- Done -->
   <section class="card hidden" id="done-first">
-    <h2>Your agent is ready 🌱</h2>
+    <h2>Your agent is ready</h2>
     <p>Now invite your partner. Give them this code. They choose <b>"I have my partner's code"</b>.</p>
     <div class="code-box" id="code"></div>
     <a class="btn" href="/home">Go to my home</a>
   </section>
   <section class="card hidden" id="done-join">
-    <h2>You're in! 🌱</h2>
+    <h2>You're in!</h2>
     <p>Your agent is ready, and you're now linked with <b id="partner-name"></b>.</p>
     <a class="btn" href="/home">Go to our home</a>
   </section>
@@ -176,7 +176,7 @@
       try {
         const c = await api("/api/couples/" + encodeURIComponent(code));
         taken = c.taken_colours;
-        document.getElementById("hello").textContent = c.partner_name + " invited you 💛";
+        document.getElementById("hello").textContent = c.partner_name + " invited you";
         document.getElementById("hello-sub").textContent =
           "Answer a few private questions so your own AI agent understands your life. " + c.partner_name + " will never see your answers.";
         document.getElementById("partner-name").textContent = c.partner_name;

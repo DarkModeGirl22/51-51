@@ -85,19 +85,19 @@ QUIET = ["all quiet on {area} this week", "nothing logged for {area} yet", "{are
 AREA_WORDS = {"kids": "the kids", "home": "the home", "money": "the money"}
 
 BALANCED_MSG = [
-    "This week was beautifully balanced. You both gave a little more than half, that's 51/51. Super good! 💛",
-    "You two were a real team this week. Nobody carried it alone. Be proud of each other. 🌿",
-    "What a balanced week! You both showed up for kids, home and money. Keep it going. ✨",
+    "This week was beautifully balanced. You both gave a little more than half, that's 51/51. Super good!",
+    "You two were a real team this week. Nobody carried it alone. Be proud of each other.",
+    "What a balanced week! You both showed up for kids, home and money. Keep it going.",
 ]
 MORE_MSG = [
-    "You carried a lot this week. Be proud of yourself, and let {other} take some weight off your shoulders. 🌟",
-    "Wow, you did so much this week. That counts, and it's seen. Rest a little if you can. 💛",
-    "You were the engine of the house this week. Thank you, really. 🌻",
+    "You carried a lot this week. Be proud of yourself, and let {other} take some weight off your shoulders.",
+    "Wow, you did so much this week. That counts, and it's seen. Rest a little if you can.",
+    "You were the engine of the house this week. Thank you, really.",
 ]
 LESS_MSG = [
-    "{other} did a lot this week. They must be tired. They deserve a big thank-you, and maybe you could carry more in the coming days. 💛",
-    "{other} carried a heavy week. A thank-you would mean a lot, and taking a few things off their plate even more. 🌿",
-    "This week leaned on {other}. Say thank you, and see what you can pick up next. 🤝",
+    "{other} did a lot this week. They must be tired. They deserve a big thank-you, and maybe you could carry more in the coming days.",
+    "{other} carried a heavy week. A thank-you would mean a lot, and taking a few things off their plate even more.",
+    "This week leaned on {other}. Say thank you, and see what you can pick up next.",
 ]
 
 
@@ -202,7 +202,7 @@ Write what the couple sees:
    - balanced: tell them the week was balanced, they both contributed, that's super good.
    - for whoever carried more: they did a lot, they should be proud of themselves.
    - for the other: their partner did a lot, must be tired, deserves a thank-you, and they could carry more in the coming days.
-   Kind, never blaming, a little playful, one emoji at most.
+   Kind, never blaming, warm and plain-spoken, no emojis.
 STRICT RULES: no numbers, digits or percentages anywhere. Never mention or hint at anything
 from the private notes that the other partner shouldn't know (salary, feelings, health, sacrifices);
 talk only about what was logged and fair-sounding reasons.
@@ -330,7 +330,6 @@ def _practice_conflict(asker, other, question: str, entries) -> str:
 
 
 # ---------- your story: past weeks, told in words (rules only, no AI call) ----------
-STORY_EMOJI = {"balanced": "⚖️", "a_more": None, "b_more": None}
 
 
 def week_story(a, b, entries, seed: str) -> dict:
