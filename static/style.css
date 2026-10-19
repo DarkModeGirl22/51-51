@@ -128,3 +128,26 @@ input:focus, textarea:focus, select:focus { outline: none; border-color: var(--a
 
 .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; gap: 10px; }
 .linkish { background: none; color: var(--soft); padding: 6px; font-weight: 600; font-size: 14px; text-decoration: underline; }
+
+/* Today list */
+.entry {
+  display: flex; gap: 12px; align-items: flex-start;
+  padding: 12px 14px; border-radius: 16px; margin-bottom: 10px;
+  border-left: 6px solid var(--line); background: #fffdfb;
+}
+.entry.c-pink-soft { background: var(--pink-soft); border-left-color: var(--pink); }
+.entry.c-blue-soft { background: var(--blue-soft); border-left-color: var(--blue); }
+.entry.c-orange-soft { background: var(--orange-soft); border-left-color: var(--orange); }
+.entry.c-green-soft { background: var(--green-soft); border-left-color: var(--green); }
+.entry .icon { font-size: 24px; line-height: 1.2; }
+.entry .body { flex: 1; }
+.entry .meta { font-size: 13px; color: var(--soft); }
+.tag { display: inline-block; font-size: 12px; font-weight: 800; padding: 2px 9px; border-radius: 999px; background: #fff; margin-left: 6px; }
+
+/* Add box */
+.add-row { display: flex; gap: 10px; }
+.add-row input { flex: 1; }
+.photo-btn { position: relative; overflow: hidden; }
+.photo-btn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.toast { background: var(--ink); color: #fff; border-radius: 14px; padding: 10px 14px; margin-top: 10px; font-size: 15px; }
+.badge { display: inline-block; font-size: 12px; font-weight: 800; padding: 3px 10px; border-radius: 999px; background: #f3f0ff; color: #4b3f8f; }

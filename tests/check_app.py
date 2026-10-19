@@ -82,7 +82,45 @@ def slice1(c):
     ok(c.get("/api/home").status_code == 401, "no key -> asked to join")
 
 
+def slice2(c):
+    from datetime import datetime, timezone
+    from app import ai, main
+    wife, husband, _ = onboard(c)
+
+    r = c.post("/api/entries", data={"text": "Picked up Sarah from school"}, headers=wife)
+    ok(r.status_code == 200 and r.json()["area"] == "kids", "text entry sorted into kids")
+    r = c.post("/api/entries", data={"text": "Paid the electricity bill"}, headers=husband)
+    ok(r.json()["area"] == "money", "bill sorted into money")
+    r = c.post("/api/entries", files={"photo": ("r.jpg", b"fakejpeg", "image/jpeg")}, headers=husband)
+    ok(r.status_code == 200 and r.json()["area"] in ai.AREAS, "receipt photo becomes an entry")
+    ok(c.post("/api/entries", data={"text": "  "}, headers=wife).status_code == 422, "empty entry refused")
+
+    real_sort, real_read = ai.sort_text, ai.read_receipt
+    def boom(*a, **k):
+        raise ai.AIError("quota")
+    ai.sort_text = boom
+    r = c.post("/api/entries", data={"text": "Cooked dinner"}, headers=wife)
+    ok(r.status_code == 200 and r.json()["area"] == "unsorted" and r.json()["note"] == "ai_down",
+       "AI down -> entry still saved as unsorted")
+    ai.sort_text = real_sort
+    ai.read_receipt = lambda *a, **k: None
+    r = c.post("/api/entries", files={"photo": ("r.jpg", b"blurry", "image/jpeg")}, headers=wife)
+    ok(r.status_code == 422 and "describe it" in r.json()["detail"], "unreadable photo -> asks to describe it")
+    ai.read_receipt = real_read
+
+    hw = c.get("/api/home", headers=wife).json()
+    hh = c.get("/api/home", headers=husband).json()
+    ok(len(hw["entries"]) == 4 and len(hh["entries"]) == 4, "both partners see all four entries")
+    ok(hw["ai_mode"] == "practice", "practice AI is labelled")
+    ok(c.get("/api/ai-check").json()["mode"] == "practice", "ai-check reports the mode")
+
+    # Week starts Monday 00:00 local: Wed 22 Oct 2026 10:00 UTC, Paris (-120) -> Sun 19 Oct 22:00 UTC
+    ws = main.week_start_utc(-120, datetime(2026, 10, 21, 10, 0, tzinfo=timezone.utc))
+    ok(ws == datetime(2026, 10, 18, 22, 0, tzinfo=timezone.utc), "week starts Monday midnight local time")
+
+
 if __name__ == "__main__":
     with TestClient(app) as c:
         slice1(c)
+        slice2(c)
     print("All checks passed.")

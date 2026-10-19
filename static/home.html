@@ -25,12 +25,29 @@
     <p class="small muted">You can already start logging what you do.</p>
   </div>
 
+  <div class="card" id="add">
+    <h2>What did you do?</h2>
+    <form id="add-form">
+      <div class="add-row">
+        <input id="add-text" maxlength="500" placeholder="Picked up Sarah from school…">
+        <button type="submit" id="add-btn">Add</button>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <label class="btn secondary photo-btn" style="margin:0">📸 Add a receipt photo
+          <input type="file" id="add-photo" accept="image/*">
+        </label>
+        <span class="small muted" id="photo-name"></span>
+      </div>
+    </form>
+    <div class="toast hidden" id="add-toast"></div>
+  </div>
+
   <div class="card" id="today">
-    <h2>Today</h2>
-    <div class="empty">
-      <span class="big">🌤️</span>
-      Nothing logged yet today.<br>Log your first thing. A school run, a bill, a dinner, it all counts.
+    <div class="row" style="justify-content:space-between">
+      <h2 style="margin:0">Today</h2>
+      <span class="badge hidden" id="practice">Practice AI</span>
     </div>
+    <div id="today-list" style="margin-top:12px"></div>
   </div>
 
   <p class="small muted" style="text-align:center">
@@ -56,7 +73,72 @@
     if (h.partner) couple.append(" & ", whoChip(h.partner));
     document.getElementById("waiting").classList.toggle("hidden", !!h.partner);
     document.getElementById("code").textContent = h.code;
+    document.getElementById("practice").classList.toggle("hidden", h.ai_mode !== "practice");
+    drawToday(h);
   }
+
+  function drawToday(h) {
+    const people = { [h.me.id]: h.me };
+    if (h.partner) people[h.partner.id] = h.partner;
+    const list = document.getElementById("today-list");
+    list.innerHTML = "";
+    const today = h.entries.filter(e => isToday(e.created_at));
+    if (!today.length) {
+      list.append(el("div", { class: "empty" }, el("span", { class: "big" }, "🌤️"),
+        "Nothing logged yet today.", el("br"), "Log your first thing. A school run, a bill, a dinner, it all counts."));
+      return;
+    }
+    for (const e of today) {
+      const who = people[e.partner_id] || { name: "?", colour: "pink" };
+      const area = AREAS[e.area] || AREAS.unsorted;
+      list.append(el("div", { class: "entry c-" + who.colour + "-soft" },
+        el("div", { class: "icon" }, e.kind === "photo" ? "🧾" : area.icon),
+        el("div", { class: "body" },
+          el("div", {}, e.summary),
+          el("div", { class: "meta" }, who.name + " · " + timeOf(e.created_at),
+            el("span", { class: "tag" }, area.icon + " " + area.label)))));
+    }
+  }
+
+  const photoInput = document.getElementById("add-photo");
+  photoInput.onchange = () => {
+    document.getElementById("photo-name").textContent = photoInput.files[0] ? photoInput.files[0].name : "";
+  };
+
+  function toast(msg) {
+    const t = document.getElementById("add-toast");
+    t.textContent = msg;
+    t.classList.remove("hidden");
+    clearTimeout(toast.timer);
+    toast.timer = setTimeout(() => t.classList.add("hidden"), 5000);
+  }
+
+  document.getElementById("add-form").onsubmit = async (ev) => {
+    ev.preventDefault();
+    const text = document.getElementById("add-text").value.trim();
+    const file = photoInput.files[0];
+    if (!text && !file) return toast("Write what you did, or add a photo.");
+    const fd = new FormData();
+    fd.append("text", text);
+    if (file) fd.append("photo", file);
+    const btn = document.getElementById("add-btn");
+    btn.disabled = true; btn.textContent = "…";
+    try {
+      const r = await api("/api/entries", { method: "POST", body: fd });
+      document.getElementById("add-text").value = "";
+      photoInput.value = ""; document.getElementById("photo-name").textContent = "";
+      toast(r.note === "ai_down"
+        ? "Saved! The AI is resting for a minute, so this one stays under \"To sort\"."
+        : "Saved under " + (AREAS[r.area] || AREAS.unsorted).label + " " + (AREAS[r.area] || AREAS.unsorted).icon);
+      await load();
+    } catch (ex) {
+      toast(ex.message);
+      if (ex.status === 422 && file) document.getElementById("add-text").focus();
+    } finally {
+      btn.disabled = false; btn.textContent = "Add";
+    }
+  };
+
   load();
 </script>
 </body>

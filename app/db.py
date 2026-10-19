@@ -27,6 +27,16 @@ CREATE TABLE IF NOT EXISTS partners (
     extra_note TEXT NOT NULL DEFAULT '', -- PRIVATE
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+CREATE TABLE IF NOT EXISTS entries (
+    id INTEGER PRIMARY KEY,
+    couple_id INTEGER NOT NULL REFERENCES couples(id),
+    partner_id INTEGER NOT NULL REFERENCES partners(id),
+    created_at TEXT NOT NULL,          -- UTC, ISO format
+    kind TEXT NOT NULL,                -- text | photo
+    text TEXT NOT NULL DEFAULT '',     -- what the partner typed (if anything)
+    area TEXT NOT NULL,                -- kids | home | money | unsorted
+    summary TEXT NOT NULL              -- what is shown on Today
+);
 """
 
 

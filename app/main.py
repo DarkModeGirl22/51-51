@@ -1,14 +1,15 @@
 """51/51 server: saves everything, talks to the AI, and guards each partner's privacy."""
 import json
 import secrets
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import FastAPI, File, Form, Header, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import db
+from . import ai, db
 
 STATIC = Path(__file__).resolve().parent.parent / "static"
 COLOURS = ["pink", "blue", "orange", "green"]
@@ -136,10 +137,82 @@ def join(body: JoinBody):
     return {"key": key, "code": couple["code"]}
 
 
+def week_start_utc(tz_offset_min: int, now: datetime | None = None) -> datetime:
+    """Monday 00:00 in the partner's local time, expressed in UTC.
+    tz_offset_min is JavaScript's getTimezoneOffset() (Paris summer = -120)."""
+    now = now or datetime.now(timezone.utc)
+    local = now - timedelta(minutes=tz_offset_min)
+    monday = (local - timedelta(days=local.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
+    return monday + timedelta(minutes=tz_offset_min)
+
+
+def week_entries(conn, couple_id: int, start: datetime):
+    rows = conn.execute(
+        "SELECT * FROM entries WHERE couple_id=? AND created_at>=? ORDER BY created_at DESC",
+        (couple_id, start.isoformat())).fetchall()
+    return [{"id": r["id"], "partner_id": r["partner_id"], "created_at": r["created_at"],
+             "kind": r["kind"], "area": r["area"], "summary": r["summary"]} for r in rows]
+
+
 @app.get("/api/home")
-def home(x_partner_key: str | None = Header(default=None)):
+def home(x_partner_key: str | None = Header(default=None),
+         x_tz_offset: int = Header(default=0)):
     with db.connect() as conn:
         me = me_from_key(conn, x_partner_key)
         partner = other_partner(conn, me)
         code = conn.execute("SELECT code FROM couples WHERE id=?", (me["couple_id"],)).fetchone()["code"]
-    return {"me": public(me), "partner": public(partner), "code": code}
+        entries = week_entries(conn, me["couple_id"], week_start_utc(x_tz_offset))
+    return {"me": public(me), "partner": public(partner), "code": code,
+            "entries": entries, "ai_mode": ai.mode()}
+
+
+MAX_PHOTO = 8 * 1024 * 1024
+
+
+@app.post("/api/entries")
+async def add_entry(text: str = Form(default=""), photo: UploadFile | None = File(default=None),
+                    x_partner_key: str | None = Header(default=None)):
+    text = text.strip()[:500]
+    image = await photo.read() if photo is not None else b""
+    if not text and not image:
+        raise HTTPException(422, "Write what you did, or add a photo.")
+    if len(image) > MAX_PHOTO:
+        raise HTTPException(413, "That photo is too big. Try a smaller one.")
+    with db.connect() as conn:
+        me = me_from_key(conn, x_partner_key)
+
+    note = None
+    if image:
+        try:
+            result = ai.read_receipt(image, photo.content_type or "image/jpeg")
+        except ai.AIError:
+            result = None
+            note = "ai_down"
+        if result is None:
+            if text:  # the partner also wrote something: sort that instead
+                image = b""
+            else:
+                raise HTTPException(422, "I couldn't read this photo. Can you describe it in a few words?")
+        elif text:
+            result["summary"] = f"{text} · {result['summary']}"
+    if not image:
+        try:
+            result = ai.sort_text(text)
+        except ai.AIError:
+            result = {"area": "unsorted", "summary": text}
+            note = "ai_down"
+
+    created = datetime.now(timezone.utc).isoformat()
+    with db.connect() as conn:
+        entry_id = conn.execute(
+            "INSERT INTO entries (couple_id, partner_id, created_at, kind, text, area, summary)"
+            " VALUES (?,?,?,?,?,?,?)",
+            (me["couple_id"], me["id"], created, "photo" if image else "text", text,
+             result["area"], result["summary"])).lastrowid
+    return {"id": entry_id, "area": result["area"], "summary": result["summary"],
+            "created_at": created, "note": note}
+
+
+@app.get("/api/ai-check")
+def ai_check():
+    return ai.check()

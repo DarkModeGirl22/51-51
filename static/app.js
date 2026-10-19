@@ -16,6 +16,7 @@ async function api(path, options = {}) {
   const headers = options.headers || {};
   const key = getKey();
   if (key) headers["X-Partner-Key"] = key;
+  headers["X-TZ-Offset"] = String(new Date().getTimezoneOffset());
   if (options.json !== undefined) {
     headers["Content-Type"] = "application/json";
     options.body = JSON.stringify(options.json);
@@ -47,4 +48,19 @@ function el(tag, attrs = {}, ...children) {
 
 function whoChip(p) {
   return el("span", { class: "who" }, el("i", { class: "c-" + p.colour }), p.name);
+}
+
+const AREAS = {
+  kids: { icon: "🧸", label: "Kids" },
+  home: { icon: "🏡", label: "Home" },
+  money: { icon: "💰", label: "Money" },
+  unsorted: { icon: "✨", label: "To sort" },
+};
+
+function isToday(iso) {
+  const d = new Date(iso), n = new Date();
+  return d.getFullYear() === n.getFullYear() && d.getMonth() === n.getMonth() && d.getDate() === n.getDate();
+}
+function timeOf(iso) {
+  return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
