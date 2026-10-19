@@ -29,7 +29,7 @@ Build mode: fast (learner asked to move quickly with no extra steps)
   Learner check: On the live Render link with your Gemini key, log "picked up Sarah from school" and upload a real receipt photo, and see both sorted correctly.
   Commit: `Log daily entries by text or photo and sort them with AI`
 
-- [ ] **3. The private agents describe the week in words (the kernel)**
+- [x] **3. The private agents describe the week in words (the kernel)**
   Becomes usable: The home screen shows This Week: for kids, home and money, words describing how much each partner carried, plus a different reality-check message for each partner (balanced → both praised; uneven → one praised, the other nudged to thank and carry more). No numbers anywhere. If shared facts disagree (5 kids vs 3), a question appears on the board. A sample demo couple can be loaded.
   Why now: This is 51/51's unique kernel; it needs logged entries (slice 2) and should be judged early, before the conflict button.
   PRD ref: `prd.md > Private Agents`, `prd.md > Weekly Board and Reality Check`, `prd.md > Shared-Fact Check`
@@ -39,7 +39,7 @@ Build mode: fast (learner asked to move quickly with no extra steps)
   Learner check: Open the demo couple on the live link and read the board and both messages — do they sound kind, fair and like 51/51?
   Commit: `Private agents describe the week in words, never numbers`
 
-- [ ] **4. The conflict button gives a neutral way to fix it**
+- [x] **4. The conflict button gives a neutral way to fix it**
   Becomes usable: From the top of home, a partner explains why they're upset; the AI answers neutrally from the logs and both contexts, points out patterns (e.g. she did the dishes every time lately), proposes a fix, and both partners can see the exchange.
   Why now: Builds on the agents and logs from slices 2–3; it's the second demo moment.
   PRD ref: `prd.md > Conflict Button`
@@ -51,7 +51,7 @@ Build mode: fast (learner asked to move quickly with no extra steps)
 
 ## Hands-on Checkpoints
 
-- [ ] Early usable behavior explored — after slice 2, on the live Render link with the real Gemini key (proves photo reading and real AI early)
+- [ ] Early usable behavior explored — moved into the final review at the learner's request ("finish it then I'll open it"); the real-Gemini and photo check now happens there
 - [ ] Final kick-the-tires exploration and feedback completed
 
 ## Final Review
@@ -71,3 +71,9 @@ Reflection:
 Activity mode:
 
 ## Revisions
+
+- Early hands-on checkpoint after slice 2 moved into the final review — the learner asked to see the finished app first; real Gemini and photo reading are checked on Render during the final review instead.
+- Sample couple uses "the last seven days" instead of Monday–Sunday — on a Monday the calendar week is almost empty, so the demo wouldn't show a full board; real couples keep Monday–Sunday.
+- Added a "Try the sample couple" button and `/api/demo` instead of only `scripts/seed_demo.py` — Render's free plan has no shell to run scripts, and the database resets when the service sleeps.
+- Slices 3 and 4 were built in one pass (they share the mediator), committed as two commits.
+

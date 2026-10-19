@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>51/51 · Talk it out</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,600;0,800;0,900;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<main>
+  <div class="topbar">
+    <a href="/home" class="linkish" style="text-decoration:none">← Back home</a>
+    <div id="couple" class="row"></div>
+  </div>
+
+  <div class="card">
+    <h1>Something's bothering you?</h1>
+    <p class="muted">Tell the 51/51 mediator, not your partner. It looks at what you both logged and answers you both, calmly. Your partner will see your message and the answer, but never anything you told your private agent.</p>
+    <form id="ask">
+      <textarea id="question" maxlength="1000" placeholder="e.g. I'm tired of always being the one doing the dishes." required></textarea>
+      <div class="row" style="margin-top:12px">
+        <button type="submit" class="calm" id="send">Ask the mediator</button>
+      </div>
+      <p class="error hidden" id="error"></p>
+    </form>
+  </div>
+
+  <div id="list"></div>
+</main>
+<script src="/static/app.js"></script>
+<script>
+  if (!getKey()) location.href = "/";
+  let people = {};
+
+  async function load() {
+    let d;
+    try { d = await api("/api/conflicts"); }
+    catch (ex) { if (ex.status === 401) return forget(); return alert(ex.message); }
+    people = { [d.me.id]: d.me };
+    if (d.partner) people[d.partner.id] = d.partner;
+    const couple = document.getElementById("couple");
+    couple.innerHTML = "";
+    couple.append(whoChip(d.me));
+    if (d.partner) couple.append(" & ", whoChip(d.partner));
+    const list = document.getElementById("list");
+    list.innerHTML = "";
+    if (!d.conflicts.length) {
+      list.append(el("div", { class: "card" }, el("div", { class: "empty" }, el("span", { class: "big" }, "🕊️"),
+        "No conflicts so far. Lovely.")));
+      return;
+    }
+    for (const c of d.conflicts) {
+      const who = people[c.partner_id] || { name: "?", colour: "pink" };
+      const when = new Date(c.created_at).toLocaleString([], { weekday: "long", hour: "2-digit", minute: "2-digit" });
+      list.append(el("div", { class: "card" },
+        el("div", { class: "bubble ask c-" + who.colour + "-soft" },
+          el("div", { class: "meta" }, who.name + " · " + when), c.question),
+        el("div", { class: "bubble ai" },
+          el("div", { class: "meta" }, "🕊️ 51/51 mediator, to both of you"), c.reply)));
+    }
+  }
+
+  document.getElementById("ask").onsubmit = async (ev) => {
+    ev.preventDefault();
+    const err = document.getElementById("error");
+    err.classList.add("hidden");
+    const btn = document.getElementById("send");
+    btn.disabled = true; btn.textContent = "The mediator is reading your logs…";
+    try {
+      await api("/api/conflicts", { method: "POST", json: { question: document.getElementById("question").value } });
+      document.getElementById("question").value = "";
+      await load();
+    } catch (ex) {
+      err.textContent = ex.message; err.classList.remove("hidden");
+    } finally {
+      btn.disabled = false; btn.textContent = "Ask the mediator";
+    }
+  };
+  load();
+</script>
+</body>
+</html>
