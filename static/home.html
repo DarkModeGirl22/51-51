@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>51/51 · Home</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,600;0,800;0,900;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<main>
+  <div class="topbar">
+    <div class="brand" style="margin:0">
+      <div class="dots"><i></i><i></i></div>
+      <div class="logo">51<span>/</span>51</div>
+    </div>
+    <div id="couple" class="row"></div>
+  </div>
+
+  <div class="card soft hidden" id="waiting">
+    <h3>Waiting for your partner 💌</h3>
+    <p>Give them this code. They choose <b>"I have my partner's code"</b>.</p>
+    <div class="code-box" id="code"></div>
+    <p class="small muted">You can already start logging what you do.</p>
+  </div>
+
+  <div class="card" id="today">
+    <h2>Today</h2>
+    <div class="empty">
+      <span class="big">🌤️</span>
+      Nothing logged yet today.<br>Log your first thing. A school run, a bill, a dinner, it all counts.
+    </div>
+  </div>
+
+  <p class="small muted" style="text-align:center">
+    <button class="linkish" onclick="if(confirm('Leave 51/51 on this browser?')) forget()">Not you? Leave on this browser</button>
+  </p>
+</main>
+<script src="/static/app.js"></script>
+<script>
+  if (!getKey()) location.href = "/";
+
+  async function load() {
+    let h;
+    try {
+      h = await api("/api/home");
+    } catch (ex) {
+      if (ex.status === 401) return forget();
+      alert(ex.message);
+      return;
+    }
+    const couple = document.getElementById("couple");
+    couple.innerHTML = "";
+    couple.append(whoChip(h.me));
+    if (h.partner) couple.append(" & ", whoChip(h.partner));
+    document.getElementById("waiting").classList.toggle("hidden", !!h.partner);
+    document.getElementById("code").textContent = h.code;
+  }
+  load();
+</script>
+</body>
+</html>

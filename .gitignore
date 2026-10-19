@@ -1,0 +1,17 @@
+# Personal learning context (kept out of commits)
+/devpost/learner-profile.md
+
+# Local credentials
+.env
+.env.*
+!.env.example
+
+# Course skill files (installed by the guide, not part of the app)
+.agents/
+.claude/
+agent/
+
+# App data and Python caches
+data/
+__pycache__/
+*.pyc

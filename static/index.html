@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>51/51</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,600;0,800;0,900;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<main>
+  <div class="brand">
+    <div class="dots"><i></i><i></i></div>
+    <div class="logo">51<span>/</span>51</div>
+  </div>
+
+  <div class="card">
+    <h1>Not 50/50.<br>Both of you, a little more than half.</h1>
+    <p class="muted">51/51 helps married couples share kids, home and money fairly, without the fights. Each of you gets a private AI agent that knows your real situation.</p>
+  </div>
+
+  <div class="card" id="choose">
+    <h2>Hi! Is this your first time?</h2>
+    <div class="stack" style="margin-top:14px">
+      <a class="btn" href="/onboarding?mode=first">I'm the first of us two here</a>
+      <button class="secondary" id="have-code">I have my partner's code</button>
+    </div>
+  </div>
+
+  <div class="card hidden" id="code-card">
+    <h2>Enter your partner's code</h2>
+    <p class="muted">Your partner sees it after answering their questions. It looks like <b>MOON-42</b>.</p>
+    <form id="code-form">
+      <input id="code" autocomplete="off" placeholder="MOON-42" required>
+      <div class="row" style="margin-top:14px">
+        <button type="submit">Continue</button>
+        <button type="button" class="secondary" id="back">Back</button>
+      </div>
+      <p class="error hidden" id="code-error"></p>
+    </form>
+  </div>
+</main>
+<script src="/static/app.js"></script>
+<script>
+  if (getKey()) location.href = "/home";
+
+  const choose = document.getElementById("choose");
+  const codeCard = document.getElementById("code-card");
+  const errorBox = document.getElementById("code-error");
+
+  document.getElementById("have-code").onclick = () => {
+    choose.classList.add("hidden");
+    codeCard.classList.remove("hidden");
+    document.getElementById("code").focus();
+  };
+  document.getElementById("back").onclick = () => {
+    codeCard.classList.add("hidden");
+    choose.classList.remove("hidden");
+  };
+  document.getElementById("code-form").onsubmit = async (e) => {
+    e.preventDefault();
+    errorBox.classList.add("hidden");
+    const code = document.getElementById("code").value.trim().toUpperCase();
+    try {
+      await api("/api/couples/" + encodeURIComponent(code));
+      location.href = "/onboarding?mode=join&code=" + encodeURIComponent(code);
+    } catch (err) {
+      errorBox.textContent = err.message;
+      errorBox.classList.remove("hidden");
+    }
+  };
+</script>
+</body>
+</html>

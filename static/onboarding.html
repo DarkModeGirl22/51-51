@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>51/51 · Getting to know you</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,600;0,800;0,900;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<main>
+  <div class="brand">
+    <div class="dots"><i></i><i></i></div>
+    <div class="logo">51<span>/</span>51</div>
+  </div>
+
+  <div class="steps"><i class="on"></i><i></i><i></i></div>
+
+  <form id="form">
+    <!-- Step 1: you -->
+    <section class="card step" data-step="1">
+      <h2 id="hello">Let's meet you</h2>
+      <p class="muted" id="hello-sub">A few questions so your own AI agent understands your life.</p>
+      <label for="name">Your first name</label>
+      <input id="name" maxlength="40" required>
+      <label>Pick your colour <span class="hint">· everything you do will show in it</span></label>
+      <div class="colours" id="colours"></div>
+      <div class="row" style="margin-top:20px"><button type="button" data-next>Next</button></div>
+    </section>
+
+    <!-- Step 2: material facts -->
+    <section class="card step hidden" data-step="2">
+      <h2>The facts of your home</h2>
+      <div class="private-note">🔒 <span>Only <b>your</b> agent sees these answers. Your partner never will.</span></div>
+      <label for="people">How many people live in your home?</label>
+      <input id="people" type="number" min="1" max="20">
+      <label for="married">How long have you been married?</label>
+      <input id="married" placeholder="e.g. 6 years">
+      <label for="job">Your job</label>
+      <input id="job" placeholder="e.g. nurse, part-time">
+      <label for="hours">Your usual working hours</label>
+      <input id="hours" placeholder="e.g. 9am to 8pm, Monday to Friday">
+      <label for="earns">Who earns more?</label>
+      <select id="earns">
+        <option value="">Choose…</option>
+        <option value="me">I do</option>
+        <option value="partner">My partner does</option>
+        <option value="same">About the same</option>
+      </select>
+      <label for="kids">How many children do you have? <span class="hint">· your partner answers this too, so it should match</span></label>
+      <input id="kids" type="number" min="0" max="15">
+      <label for="ages">Their ages</label>
+      <input id="ages" placeholder="e.g. 4 and 7">
+      <div class="row" style="margin-top:20px">
+        <button type="button" class="secondary" data-back>Back</button>
+        <button type="button" data-next>Next</button>
+      </div>
+    </section>
+
+    <!-- Step 3: immaterial -->
+    <section class="card step hidden" data-step="3">
+      <h2>How it really feels</h2>
+      <div class="private-note">🔒 <span>Be honest. This stays between you and your agent.</span></div>
+      <label for="sacrifices">What have you given up or changed for your family?</label>
+      <textarea id="sacrifices" placeholder="e.g. I went part-time after our second child"></textarea>
+      <label for="feel">How do you feel about how you share kids, home and money?</label>
+      <textarea id="feel"></textarea>
+      <label for="sees">How do you think your partner sees it?</label>
+      <textarea id="sees"></textarea>
+      <label for="wish">What would you love to change?</label>
+      <textarea id="wish"></textarea>
+      <label for="extra">Anything else your agent should know? <span class="hint">· optional</span></label>
+      <textarea id="extra" placeholder="e.g. I'm pregnant, so heavy shopping is hard right now"></textarea>
+      <div class="row" style="margin-top:20px">
+        <button type="button" class="secondary" data-back>Back</button>
+        <button type="submit" id="finish">Meet my agent</button>
+      </div>
+      <p class="error hidden" id="error"></p>
+    </section>
+  </form>
+
+  <!-- Done -->
+  <section class="card hidden" id="done-first">
+    <h2>Your agent is ready 🌱</h2>
+    <p>Now invite your partner. Give them this code. They choose <b>"I have my partner's code"</b>.</p>
+    <div class="code-box" id="code"></div>
+    <a class="btn" href="/home">Go to my home</a>
+  </section>
+  <section class="card hidden" id="done-join">
+    <h2>You're in! 🌱</h2>
+    <p>Your agent is ready, and you're now linked with <b id="partner-name"></b>.</p>
+    <a class="btn" href="/home">Go to our home</a>
+  </section>
+</main>
+<script src="/static/app.js"></script>
+<script>
+  const params = new URLSearchParams(location.search);
+  const mode = params.get("mode") === "join" ? "join" : "first";
+  const code = params.get("code") || "";
+  let colour = null, taken = [], step = 1;
+
+  if (getKey()) location.href = "/home";
+
+  function drawColours() {
+    const box = document.getElementById("colours");
+    box.innerHTML = "";
+    for (const c of ["pink", "blue", "orange", "green"]) {
+      const b = el("button", { type: "button", class: "c-" + c + (colour === c ? " picked" : ""), "aria-label": c });
+      if (taken.includes(c)) b.disabled = true;
+      b.onclick = () => { colour = c; drawColours(); };
+      box.append(b);
+    }
+  }
+
+  function show(n) {
+    step = n;
+    document.querySelectorAll(".step").forEach(s => s.classList.toggle("hidden", s.dataset.step != n));
+    document.querySelectorAll(".steps i").forEach((d, i) => d.classList.toggle("on", i < n));
+    window.scrollTo(0, 0);
+  }
+
+  document.querySelectorAll("[data-next]").forEach(b => b.onclick = () => {
+    if (step === 1) {
+      if (!document.getElementById("name").value.trim()) return alert("What's your first name?");
+      if (!colour) return alert("Pick a colour, so your partner can see what you do.");
+    }
+    show(step + 1);
+  });
+  document.querySelectorAll("[data-back]").forEach(b => b.onclick = () => show(step - 1));
+
+  const val = id => document.getElementById(id).value.trim();
+
+  document.getElementById("form").onsubmit = async (e) => {
+    e.preventDefault();
+    const err = document.getElementById("error");
+    err.classList.add("hidden");
+    const kids = val("kids");
+    const body = {
+      name: val("name"),
+      colour,
+      kids_count: kids === "" ? null : Number(kids),
+      kids_ages: val("ages"),
+      material: { people_at_home: val("people"), married_for: val("married"), job: val("job"),
+                  working_hours: val("hours"), who_earns_more: val("earns") },
+      immaterial: { sacrifices: val("sacrifices"), feelings: val("feel"),
+                    how_partner_sees_it: val("sees"), wishes: val("wish") },
+      extra_note: val("extra"),
+    };
+    const btn = document.getElementById("finish");
+    btn.disabled = true;
+    try {
+      if (mode === "first") {
+        const r = await api("/api/couples", { method: "POST", json: body });
+        setKey(r.key);
+        document.getElementById("form").classList.add("hidden");
+        document.querySelector(".steps").classList.add("hidden");
+        document.getElementById("code").textContent = r.code;
+        document.getElementById("done-first").classList.remove("hidden");
+      } else {
+        const r = await api("/api/join", { method: "POST", json: { ...body, code } });
+        setKey(r.key);
+        document.getElementById("form").classList.add("hidden");
+        document.querySelector(".steps").classList.add("hidden");
+        document.getElementById("done-join").classList.remove("hidden");
+      }
+    } catch (ex) {
+      err.textContent = ex.message;
+      err.classList.remove("hidden");
+      btn.disabled = false;
+    }
+  };
+
+  (async () => {
+    if (mode === "join") {
+      try {
+        const c = await api("/api/couples/" + encodeURIComponent(code));
+        taken = c.taken_colours;
+        document.getElementById("hello").textContent = c.partner_name + " invited you 💛";
+        document.getElementById("hello-sub").textContent =
+          "Answer a few private questions so your own AI agent understands your life. " + c.partner_name + " will never see your answers.";
+        document.getElementById("partner-name").textContent = c.partner_name;
+      } catch (ex) {
+        alert(ex.message);
+        location.href = "/";
+        return;
+      }
+    }
+    drawColours();
+  })();
+</script>
+</body>
+</html>
