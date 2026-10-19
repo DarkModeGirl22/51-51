@@ -181,6 +181,34 @@ def ryan_key(c, headers):
                             " AND p.key!=?", (headers["X-Partner-Key"], headers["X-Partner-Key"])).fetchone()[0]
 
 
+def gemini_busy(c):
+    """Free-tier limits: a busy model is retried after a pause, then another free model is used."""
+    import os as _os
+    calls = []
+
+    class Resp:
+        text = '{"ok": true}'
+
+    class Models:
+        def generate_content(self, model, contents, config):
+            calls.append(model)
+            if model == "gemini-flash-latest":
+                raise Exception("429 RESOURCE_EXHAUSTED: quota exceeded")
+            return Resp()
+
+    class Client:
+        models = Models()
+
+    saved = (ai._client, ai.time.sleep, _os.environ.get("GEMINI_API_KEY"))
+    ai._client, ai.time.sleep = Client(), (lambda s: None)
+    try:
+        r = ai.ask_json("hello")
+    finally:
+        ai._client, ai.time.sleep = saved[0], saved[1]
+    ok(r == {"ok": True} and calls[:2] == ["gemini-flash-latest"] * 2 and calls[2] != "gemini-flash-latest",
+       "Gemini busy (free-tier limit) -> waits, retries, then switches to another free model")
+
+
 def mediator_logic(c):
     sample = demo(c)
     r = c.post("/api/conflicts", json={"question": "He never walks the dog"}, headers=sample)
@@ -213,7 +241,7 @@ def mediator_logic(c):
 
 if __name__ == "__main__":
     with TestClient(app) as c:
-        for group in (inputs, privacy, ai_misbehaving, mediator_logic):
+        for group in (inputs, privacy, ai_misbehaving, gemini_busy, mediator_logic):
             print(f"--- {group.__name__}")
             group(c)
     print("All trick tests passed.")

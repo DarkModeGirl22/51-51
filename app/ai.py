@@ -7,6 +7,7 @@ screens can be tried and tested without a key.
 import json
 import os
 import re
+import time
 
 try:
     from dotenv import load_dotenv
@@ -15,7 +16,10 @@ except ImportError:  # pragma: no cover
     pass
 
 AREAS = ("kids", "home", "money")
-MODELS = [m for m in [os.environ.get("GEMINI_MODEL"), "gemini-flash-latest", "gemini-2.5-flash"] if m]
+# Free-tier limits are counted per model, so when one is busy the next one usually has room.
+MODELS = [m for m in [os.environ.get("GEMINI_MODEL"), "gemini-flash-latest", "gemini-2.5-flash",
+                      "gemini-flash-lite-latest"] if m]
+BUSY = ("429", "resource_exhausted", "quota", "rate", "503", "unavailable", "overloaded", "timed out", "timeout")
 
 
 class AIError(Exception):
@@ -50,13 +54,24 @@ def ask_json(prompt: str, image: bytes | None = None, mime: str = "image/jpeg") 
     config = types.GenerateContentConfig(response_mime_type="application/json", temperature=0.7)
     last = None
     for model in MODELS:
-        try:
-            resp = _gemini().models.generate_content(model=model, contents=contents, config=config)
-            return json.loads(resp.text)
-        except Exception as e:  # try the next model name, then give up
-            last = e
-            if "not found" not in str(e).lower() and "404" not in str(e):
-                break
+        for attempt in range(2):
+            try:
+                resp = _gemini().models.generate_content(model=model, contents=contents, config=config)
+                return json.loads(resp.text)
+            except Exception as e:
+                last = e
+                msg = str(e).lower()
+                print(f"[51/51] Gemini {model} attempt {attempt + 1} failed: {str(e)[:200]}", flush=True)
+                if "not found" in msg or "404" in msg:
+                    break                      # this model name doesn't exist: try the next one
+                if any(b in msg for b in BUSY):
+                    if attempt == 0:
+                        time.sleep(3)          # busy: wait a moment and try again
+                        continue
+                    break                      # still busy: try the next model (its own free quota)
+                if isinstance(e, ValueError):  # the reply wasn't valid JSON: ask once more
+                    continue
+                raise AIError(str(e)[:300])
     raise AIError(str(last)[:300])
 
 

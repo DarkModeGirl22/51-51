@@ -188,8 +188,6 @@
     }
     for (const area of ["kids", "home", "money"]) body.append(areaRow(area, w.areas[area], (w.lean || {})[area]));
     if (w.stale) body.append(el("p", { class: "small muted" }, "The AI is resting, so this is the last version."));
-    requestAnimationFrame(() => requestAnimationFrame(() => document.querySelectorAll(".plank[data-angle]").forEach(p =>
-      p.style.transform = "rotate(" + p.dataset.angle + "deg)")));
     if (w.message) {
       WEEK_MSG = w.message; seen = false; drawNotifs();
       bell.classList.remove("ringing"); void bell.offsetWidth; bell.classList.add("ringing");
@@ -204,23 +202,16 @@
     return el("div", { class: "area" },
       el("div", { class: "area-icon" }, icon(area)),
       el("div", { style: "flex:1" },
-        el("div", { class: "area-label" }, a.label), words,
-        H.partner ? seesaw(lean) : null));
+        el("div", { class: "area-head" }, el("span", { class: "area-label" }, a.label), leanLabel(lean)), words));
   }
 
-  // A seesaw that tips toward whoever carried more. No numbers, just a tilt.
-  function seesaw(lean) {
-    let angle = 0;
-    if (lean && lean.toward) {
-      const deg = lean.strength === 2 ? 13 : 6;
-      angle = lean.toward === H.me.id ? -deg : deg;   // the heavier side goes down
-    }
-    return el("div", { class: "seesaw", "aria-hidden": "true" },
-      el("span", { class: "end name-" + H.me.colour }, H.me.name),
-      el("div", { class: "plank-wrap" },
-        el("div", { class: "plank", "data-angle": String(angle) },
-          el("i", { class: "seat c-" + H.me.colour }), el("i", { class: "seat c-" + H.partner.colour }))),
-      el("span", { class: "end name-" + H.partner.colour }, H.partner.name));
+  // Who carried this area, in words and in their colour. No numbers.
+  function leanLabel(lean) {
+    if (!lean || !H.partner) return null;
+    if (!lean.toward) return el("span", { class: "lean shared" }, "Shared");
+    const p = lean.toward === H.me.id ? H.me : H.partner;
+    return el("span", { class: "lean c-" + p.colour + "-soft name-" + p.colour },
+      (lean.strength === 2 ? "Mostly " : "A bit more ") + p.name);
   }
 
   // ---------- day by day ----------

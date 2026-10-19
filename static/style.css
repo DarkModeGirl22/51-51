@@ -176,17 +176,11 @@ input:focus, textarea:focus, select:focus { outline: none; border-color: var(--a
   animation: shimmer 1.2s linear infinite; }
 .skeleton i:last-child { width: 55%; }
 
-/* seesaw: tips toward whoever carried more, no numbers */
-.seesaw { display: grid; grid-template-columns: 74px 1fr 74px; align-items: end; gap: 10px; margin-top: 12px; font-size: 13px; font-weight: 600; }
-.seesaw .end { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.seesaw .end:last-child { text-align: right; }
-.plank-wrap { position: relative; height: 26px; }
-.plank-wrap::after { content: ""; position: absolute; left: 50%; bottom: 0; transform: translateX(-50%);
-  border-left: 8px solid transparent; border-right: 8px solid transparent; border-bottom: 12px solid var(--line); }
-.plank { position: absolute; left: 0; right: 0; top: 8px; height: 4px; border-radius: 4px; background: #c9d1db;
-  transform: rotate(0deg); transition: transform 1.6s cubic-bezier(.3, 1.5, .5, 1); }
-.plank .seat { position: absolute; top: -7px; width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--surface); }
-.plank .seat:first-child { left: -2px; } .plank .seat:last-child { right: -2px; }
+/* who carried each area: a word label, never a number */
+.area-head { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; flex-wrap: wrap; }
+.area-head .area-label { margin: 0; }
+.lean { font-size: 13px; font-weight: 600; padding: 2px 10px; border-radius: 999px; }
+.lean.shared { background: var(--act-wash); color: var(--act); }
 
 /* your story */
 .timeline { position: relative; padding-left: 22px; margin-top: 8px; }
