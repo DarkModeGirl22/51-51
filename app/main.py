@@ -207,31 +207,75 @@ def get_board(conn, me, partner, cache_key: str, entries) -> dict | None:
     return board
 
 
+WEEKS_AGO = ["Last week", "Two weeks ago", "Three weeks ago", "Four weeks ago", "Five weeks ago",
+             "Six weeks ago", "Seven weeks ago", "Eight weeks ago"]
+
+
+def week_window(couple, tz_offset: int):
+    """(start, cache_key) of 'this week'. Sample couples always use the last seven days."""
+    if couple["is_sample"]:
+        return datetime.now(timezone.utc) - timedelta(days=7), "rolling"
+    start = week_start_utc(tz_offset)
+    return start, start.isoformat()
+
+
+def story(conn, me, partner, start: datetime) -> list:
+    """Past weeks, newest first, each told in words from the logs (no AI call)."""
+    if partner is None:
+        return []
+    a, b = sorted([me, partner], key=lambda p: p["id"])
+    out = []
+    for i, label in enumerate(WEEKS_AGO):
+        lo, hi = start - timedelta(days=7 * (i + 1)), start - timedelta(days=7 * i)
+        rows = conn.execute("SELECT * FROM entries WHERE couple_id=? AND created_at>=? AND created_at<?",
+                            (me["couple_id"], lo.isoformat(), hi.isoformat())).fetchall()
+        if not rows:
+            continue
+        w = agents.week_story(a, b, [dict(r) for r in rows], seed=f"{me['couple_id']}-{lo.date()}")
+        out.append({"label": label, **w})
+    return out
+
+
 @app.get("/api/home")
 def home(x_partner_key: str | None = Header(default=None),
          x_tz_offset: int = Header(default=0)):
+    """Everything that's instant. The AI's view of the week comes from /api/week."""
     with db.connect() as conn:
         me = me_from_key(conn, x_partner_key)
         partner = other_partner(conn, me)
         couple = conn.execute("SELECT * FROM couples WHERE id=?", (me["couple_id"],)).fetchone()
-        if couple["is_sample"]:  # sample couple: always "the last seven days", so the demo works any day
-            start, cache_key = datetime.now(timezone.utc) - timedelta(days=7), "rolling"
-        else:
-            start = week_start_utc(x_tz_offset)
-            cache_key = start.isoformat()
+        start, _ = week_window(couple, x_tz_offset)
         entries = week_entries(conn, me["couple_id"], start)
-        board = get_board(conn, me, partner, cache_key, entries)
-    week = None
-    if board is not None and "error" not in board:
-        # each partner only ever receives THEIR OWN message
-        week = {"areas": board["areas"], "headline": board.get("headline", ""),
-                "message": board["messages"].get(str(me["id"]), ""), "stale": board.get("stale", False)}
-    elif board is not None:
-        week = {"error": board["error"]}
+        past = story(conn, me, partner, start)
+        talks = conn.execute("SELECT * FROM conflicts WHERE couple_id=? ORDER BY created_at DESC LIMIT 2",
+                             (me["couple_id"],)).fetchall()
     return {"me": public(me), "partner": public(partner), "code": couple["code"],
             "sample": bool(couple["is_sample"]), "entries": entries, "ai_mode": ai.mode(),
-            "week": week, "fact_question": shared_fact_question(me, partner),
+            "fact_question": shared_fact_question(me, partner), "story": past,
+            "talks": [{"partner_id": t["partner_id"], "question": t["question"], "reply": t["reply"],
+                       "created_at": t["created_at"]} for t in talks],
             "my_kids": {"count": me["kids_count"], "ages": me["kids_ages"]}}
+
+
+@app.get("/api/week")
+def week(x_partner_key: str | None = Header(default=None),
+         x_tz_offset: int = Header(default=0)):
+    """The private agents + mediator's view of this week (may take a few seconds with the real AI)."""
+    with db.connect() as conn:
+        me = me_from_key(conn, x_partner_key)
+        partner = other_partner(conn, me)
+        couple = conn.execute("SELECT * FROM couples WHERE id=?", (me["couple_id"],)).fetchone()
+        start, cache_key = week_window(couple, x_tz_offset)
+        entries = week_entries(conn, me["couple_id"], start)
+        board = get_board(conn, me, partner, cache_key, entries)
+    if board is None:
+        return {"week": None}
+    if "error" in board:
+        return {"week": {"error": board["error"]}}
+    # each partner only ever receives THEIR OWN message
+    return {"week": {"areas": board["areas"], "headline": board.get("headline", ""),
+                     "message": board["messages"].get(str(me["id"]), ""),
+                     "lean": board.get("lean", {}), "stale": board.get("stale", False)}}
 
 
 class KidsFix(BaseModel):

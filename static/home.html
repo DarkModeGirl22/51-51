@@ -18,9 +18,17 @@
     <div id="couple" class="row"></div>
   </div>
 
+  <div class="sample-note hidden" id="sample">Sample couple · two months of invented life, read by the real AI</div>
+
   <a class="conflict-btn" href="/conflict">😤 Something's bothering me</a>
 
-  <div class="sample-note hidden" id="sample">Sample couple · invented data for trying 51/51</div>
+  <!-- the message just for you (from the agents) -->
+  <div class="card message-card fade" id="message-card">
+    <div class="small muted" id="message-for">Just for you</div>
+    <div class="message-text" id="message-text">
+      <span class="thinking">Your agents are talking about your week<i>.</i><i>.</i><i>.</i></span>
+    </div>
+  </div>
 
   <div class="card fact hidden" id="fact">
     <h3>🤔 Let's get the facts straight</h3>
@@ -56,18 +64,32 @@
     <div class="toast hidden" id="add-toast"></div>
   </div>
 
-  <div class="card" id="today">
+  <div class="card week" id="week">
     <div class="row" style="justify-content:space-between">
-      <h2 style="margin:0">Today</h2>
+      <h2 style="margin:0">This week</h2>
       <span class="badge hidden" id="practice">Practice AI</span>
     </div>
-    <div id="today-list" style="margin-top:12px"></div>
+    <p class="headline hidden" id="headline"></p>
+    <div id="week-body" style="margin-top:8px"></div>
   </div>
 
-  <div class="card week" id="week">
-    <h2>This week</h2>
-    <p class="headline hidden" id="headline"></p>
-    <div id="week-body"></div>
+  <div class="card" id="days">
+    <h2>Day by day</h2>
+    <div id="days-list" style="margin-top:8px"></div>
+  </div>
+
+  <div class="card hidden" id="story">
+    <h2>Your story</h2>
+    <p class="muted small">How the weeks before this one went, told from what you both logged.</p>
+    <div id="story-list" class="timeline"></div>
+  </div>
+
+  <div class="card hidden" id="talks">
+    <div class="row" style="justify-content:space-between">
+      <h2 style="margin:0">Talks with the mediator</h2>
+      <a class="linkish" href="/conflict">See all</a>
+    </div>
+    <div id="talks-list" style="margin-top:12px"></div>
   </div>
 
   <p class="small muted" style="text-align:center">
@@ -77,36 +99,195 @@
 <script src="/static/app.js"></script>
 <script>
   if (!getKey()) location.href = "/";
+  let H = null;            // what /api/home returned
+  let showAllDays = false;
 
   async function load() {
-    let h;
     try {
-      h = await api("/api/home");
+      H = await api("/api/home");
     } catch (ex) {
       if (ex.status === 401) return forget();
-      alert(ex.message);
-      return;
+      return toast(ex.message);
     }
     const couple = document.getElementById("couple");
     couple.innerHTML = "";
-    couple.append(whoChip(h.me));
-    if (h.partner) couple.append(" & ", whoChip(h.partner));
-    document.getElementById("waiting").classList.toggle("hidden", !!h.partner);
-    document.getElementById("code").textContent = h.code;
-    document.getElementById("practice").classList.toggle("hidden", h.ai_mode !== "practice");
-    document.getElementById("sample").classList.toggle("hidden", !h.sample);
-    drawToday(h);
-    drawWeek(h);
-    drawFact(h);
+    couple.append(whoChip(H.me));
+    if (H.partner) couple.append(" & ", whoChip(H.partner));
+    document.getElementById("waiting").classList.toggle("hidden", !!H.partner);
+    document.getElementById("code").textContent = H.code;
+    document.getElementById("practice").classList.toggle("hidden", H.ai_mode !== "practice");
+    document.getElementById("sample").classList.toggle("hidden", !H.sample);
+    drawFact(); drawDays(); drawStory(); drawTalks();
+    loadWeek();
   }
 
-  function drawFact(h) {
+  // ---------- the agents' view of the week (may take a few seconds) ----------
+  async function loadWeek() {
+    const body = document.getElementById("week-body");
+    const msgCard = document.getElementById("message-card");
+    const msgText = document.getElementById("message-text");
+    document.getElementById("headline").classList.add("hidden");
+    if (!H.partner) {
+      msgCard.classList.add("hidden");
+      body.innerHTML = "";
+      body.append(empty("💌", "Your week together starts when your partner joins."));
+      return;
+    }
+    msgCard.classList.remove("hidden");
+    msgCard.className = "card message-card fade c-" + H.me.colour + "-soft";
+    document.getElementById("message-for").textContent = "Just for you, " + H.me.name;
+    msgText.innerHTML = "";
+    msgText.append(thinking("Your agents are talking about your week"));
+    body.innerHTML = "";
+    for (const area of ["kids", "home", "money"]) body.append(areaRow(area, null, null));
+
+    let w;
+    try { w = (await api("/api/week")).week; }
+    catch (ex) { w = { error: ex.message }; }
+
+    body.innerHTML = "";
+    msgText.innerHTML = "";
+    if (!w) {
+      msgCard.classList.add("hidden");
+      body.append(empty("🌱", "Nothing logged this week yet. Log your first thing, and your agents will tell the story of your week."));
+      return;
+    }
+    if (w.error) {
+      msgText.append(w.error);
+      body.append(empty("☕", w.error));
+      return;
+    }
+    msgText.append(w.message || "");
+    if (w.headline) {
+      const h = document.getElementById("headline");
+      h.textContent = w.headline; h.classList.remove("hidden");
+    }
+    for (const area of ["kids", "home", "money"]) body.append(areaRow(area, w.areas[area], (w.lean || {})[area]));
+    if (w.stale) body.append(el("p", { class: "small muted" }, "The AI is resting, so this is the last version."));
+    requestAnimationFrame(() => document.querySelectorAll(".plank[data-angle]").forEach(p =>
+      p.style.transform = "rotate(" + p.dataset.angle + "deg)"));
+  }
+
+  function areaRow(area, text, lean) {
+    const a = AREAS[area];
+    const words = text == null
+      ? el("div", { class: "skeleton" }, el("i"), el("i"))
+      : el("div", { class: "fade" }, colourNames(text));
+    return el("div", { class: "area" },
+      el("div", { class: "area-icon" }, a.icon),
+      el("div", { style: "flex:1" },
+        el("div", { class: "area-label" }, a.label), words,
+        H.partner ? seesaw(lean) : null));
+  }
+
+  // A seesaw that tips toward whoever carried more. No numbers, just a tilt.
+  function seesaw(lean) {
+    let angle = 0;
+    if (lean && lean.toward) {
+      const deg = lean.strength === 2 ? 13 : 6;
+      angle = lean.toward === H.me.id ? -deg : deg;   // the heavier side goes down
+    }
+    return el("div", { class: "seesaw", "aria-hidden": "true" },
+      el("span", { class: "end name-" + H.me.colour }, H.me.name),
+      el("div", { class: "plank-wrap" },
+        el("div", { class: "plank", "data-angle": String(angle) },
+          el("i", { class: "seat c-" + H.me.colour }), el("i", { class: "seat c-" + H.partner.colour }))),
+      el("span", { class: "end name-" + H.partner.colour }, H.partner.name));
+  }
+
+  // ---------- day by day ----------
+  function dayLabel(iso) {
+    const d = new Date(iso), today = new Date();
+    const y = new Date(); y.setDate(today.getDate() - 1);
+    const same = (a, b) => a.toDateString() === b.toDateString();
+    if (same(d, today)) return "Today";
+    if (same(d, y)) return "Yesterday";
+    return d.toLocaleDateString("en-GB", { weekday: "long" });
+  }
+
+  function drawDays() {
+    const list = document.getElementById("days-list");
+    list.innerHTML = "";
+    if (!H.entries.length) {
+      list.append(empty("🌤️", "Nothing logged yet. A school run, a bill, a dinner: it all counts."));
+      return;
+    }
+    const people = { [H.me.id]: H.me };
+    if (H.partner) people[H.partner.id] = H.partner;
+    const groups = [];
+    for (const e of H.entries) {
+      const label = dayLabel(e.created_at);
+      if (!groups.length || groups[groups.length - 1].label !== label) groups.push({ label, items: [] });
+      groups[groups.length - 1].items.push(e);
+    }
+    const shown = showAllDays ? groups : groups.slice(0, 3);
+    for (const g of shown) {
+      list.append(el("div", { class: "day-label" }, g.label));
+      for (const e of g.items) {
+        const who = people[e.partner_id] || { name: "?", colour: "pink" };
+        const area = AREAS[e.area] || AREAS.unsorted;
+        list.append(el("div", { class: "entry fade c-" + who.colour + "-soft" },
+          el("div", { class: "icon" }, e.kind === "photo" ? "🧾" : area.icon),
+          el("div", { class: "body" },
+            el("div", {}, e.summary),
+            el("div", { class: "meta" }, who.name + " · " + timeOf(e.created_at),
+              el("span", { class: "tag" }, area.icon + " " + area.label)))));
+      }
+    }
+    if (groups.length > shown.length) {
+      list.append(el("button", { class: "secondary", style: "width:100%; margin-top:6px",
+        onclick: () => { showAllDays = true; drawDays(); } }, "Show the whole week"));
+    }
+  }
+
+  // ---------- your story ----------
+  function drawStory() {
+    const box = document.getElementById("story");
+    const list = document.getElementById("story-list");
+    list.innerHTML = "";
+    box.classList.toggle("hidden", !H.story || !H.story.length);
+    if (!H.story || !H.story.length) return;
+    const people = { [H.me.id]: H.me, [H.partner.id]: H.partner };
+    for (const w of H.story) {
+      const leader = w.leader ? people[w.leader] : null;
+      const badge = leader
+        ? el("span", { class: "story-badge c-" + leader.colour + "-soft" }, "🌟 " + leader.name + " carried more")
+        : el("span", { class: "story-badge balanced" }, "⚖️ Balanced");
+      list.append(el("div", { class: "story-item fade" },
+        el("div", { class: "story-dot" + (leader ? " c-" + leader.colour : " balanced") }),
+        el("div", {},
+          el("div", { class: "row", style: "gap:8px" }, el("b", {}, w.label), badge),
+          el("div", { class: "story-text" }, colourNames(w.story)))));
+    }
+  }
+
+  // ---------- talks with the mediator ----------
+  function drawTalks() {
+    const box = document.getElementById("talks");
+    const list = document.getElementById("talks-list");
+    list.innerHTML = "";
+    box.classList.toggle("hidden", !H.talks || !H.talks.length);
+    if (!H.talks || !H.talks.length) return;
+    const people = { [H.me.id]: H.me };
+    if (H.partner) people[H.partner.id] = H.partner;
+    for (const t of H.talks) {
+      const who = people[t.partner_id] || { name: "?", colour: "pink" };
+      const when = new Date(t.created_at).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
+      list.append(el("div", { class: "bubble ask c-" + who.colour + "-soft" },
+        el("div", { class: "meta" }, who.name + " · " + when), t.question));
+      list.append(el("div", { class: "bubble ai" },
+        el("div", { class: "meta" }, "🕊️ Mediator, to both of you"), t.reply));
+    }
+  }
+
+  // ---------- facts check ----------
+  function drawFact() {
     const box = document.getElementById("fact");
-    box.classList.toggle("hidden", !h.fact_question);
-    if (!h.fact_question) return;
-    document.getElementById("fact-text").textContent = h.fact_question;
-    document.getElementById("fact-count").value = h.my_kids.count ?? "";
-    document.getElementById("fact-ages").value = h.my_kids.ages || "";
+    box.classList.toggle("hidden", !H.fact_question);
+    if (!H.fact_question) return;
+    document.getElementById("fact-text").textContent = H.fact_question;
+    document.getElementById("fact-count").value = H.my_kids.count ?? "";
+    document.getElementById("fact-ages").value = H.my_kids.ages || "";
   }
   document.getElementById("fact-form").onsubmit = async (ev) => {
     ev.preventDefault();
@@ -115,44 +296,20 @@
         kids_count: Number(document.getElementById("fact-count").value || 0),
         kids_ages: document.getElementById("fact-ages").value } });
       await load();
-    } catch (ex) { alert(ex.message); }
+    } catch (ex) { toast(ex.message); }
   };
 
-  function drawWeek(h) {
-    const body = document.getElementById("week-body");
-    const headline = document.getElementById("headline");
-    body.innerHTML = "";
-    headline.classList.add("hidden");
-    if (!h.partner) {
-      body.append(el("div", { class: "empty" }, el("span", { class: "big" }, "💌"),
-        "Your week together starts when your partner joins."));
-      return;
-    }
-    if (!h.week) {
-      body.append(el("div", { class: "empty" }, el("span", { class: "big" }, "🌱"),
-        "Nothing logged this week yet.", el("br"), "Log your first thing, and your agents will tell the story of your week."));
-      return;
-    }
-    if (h.week.error) {
-      body.append(el("div", { class: "empty" }, el("span", { class: "big" }, "☕"), h.week.error));
-      return;
-    }
-    if (h.week.headline) { headline.textContent = h.week.headline; headline.classList.remove("hidden"); }
-    for (const area of ["kids", "home", "money"]) {
-      const a = AREAS[area];
-      body.append(el("div", { class: "area" },
-        el("div", { class: "area-icon" }, a.icon),
-        el("div", {}, el("div", { class: "area-label" }, a.label), el("div", {}, colourNames(h.week.areas[area], h)))));
-    }
-    if (h.week.message) body.append(el("div", { class: "message c-" + h.me.colour + "-soft" },
-      el("div", { class: "small muted" }, "Just for you, " + h.me.name), h.week.message));
-    if (h.week.stale) body.append(el("p", { class: "small muted" }, "The AI is resting, so this is the last version."));
+  // ---------- helpers ----------
+  function empty(icon, text) {
+    return el("div", { class: "empty" }, el("span", { class: "big" }, icon), text);
   }
-
+  function thinking(text) {
+    return el("span", { class: "thinking" }, text, el("i", {}, "."), el("i", {}, "."), el("i", {}, "."));
+  }
   // Show each partner's name in their own colour inside the words.
-  function colourNames(text, h) {
+  function colourNames(text) {
     const span = el("span");
-    const people = [h.me, h.partner].filter(Boolean);
+    const people = [H.me, H.partner].filter(Boolean);
     const re = new RegExp("(" + people.map(p => p.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|") + ")", "g");
     for (const part of String(text).split(re)) {
       const p = people.find(x => x.name === part);
@@ -160,35 +317,6 @@
     }
     return span;
   }
-
-  function drawToday(h) {
-    const people = { [h.me.id]: h.me };
-    if (h.partner) people[h.partner.id] = h.partner;
-    const list = document.getElementById("today-list");
-    list.innerHTML = "";
-    const today = h.entries.filter(e => isToday(e.created_at));
-    if (!today.length) {
-      list.append(el("div", { class: "empty" }, el("span", { class: "big" }, "🌤️"),
-        "Nothing logged yet today.", el("br"), "Log your first thing. A school run, a bill, a dinner, it all counts."));
-      return;
-    }
-    for (const e of today) {
-      const who = people[e.partner_id] || { name: "?", colour: "pink" };
-      const area = AREAS[e.area] || AREAS.unsorted;
-      list.append(el("div", { class: "entry c-" + who.colour + "-soft" },
-        el("div", { class: "icon" }, e.kind === "photo" ? "🧾" : area.icon),
-        el("div", { class: "body" },
-          el("div", {}, e.summary),
-          el("div", { class: "meta" }, who.name + " · " + timeOf(e.created_at),
-            el("span", { class: "tag" }, area.icon + " " + area.label)))));
-    }
-  }
-
-  const photoInput = document.getElementById("add-photo");
-  photoInput.onchange = () => {
-    document.getElementById("photo-name").textContent = photoInput.files[0] ? photoInput.files[0].name : "";
-  };
-
   function toast(msg) {
     const t = document.getElementById("add-toast");
     t.textContent = msg;
@@ -197,6 +325,11 @@
     toast.timer = setTimeout(() => t.classList.add("hidden"), 5000);
   }
 
+  // ---------- logging ----------
+  const photoInput = document.getElementById("add-photo");
+  photoInput.onchange = () => {
+    document.getElementById("photo-name").textContent = photoInput.files[0] ? photoInput.files[0].name : "";
+  };
   document.getElementById("add-form").onsubmit = async (ev) => {
     ev.preventDefault();
     const text = document.getElementById("add-text").value.trim();
@@ -206,14 +339,15 @@
     fd.append("text", text);
     if (file) fd.append("photo", file);
     const btn = document.getElementById("add-btn");
-    btn.disabled = true; btn.textContent = "…";
+    btn.disabled = true; btn.textContent = file ? "Reading…" : "…";
     try {
       const r = await api("/api/entries", { method: "POST", body: fd });
       document.getElementById("add-text").value = "";
       photoInput.value = ""; document.getElementById("photo-name").textContent = "";
+      const a = AREAS[r.area] || AREAS.unsorted;
       toast(r.note === "ai_down"
         ? "Saved! The AI is resting for a minute, so this one stays under \"To sort\"."
-        : "Saved under " + (AREAS[r.area] || AREAS.unsorted).label + " " + (AREAS[r.area] || AREAS.unsorted).icon);
+        : "Saved under " + a.label + " " + a.icon + ". Your agents are looking at your week again.");
       await load();
     } catch (ex) {
       toast(ex.message);

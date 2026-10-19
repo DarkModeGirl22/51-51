@@ -121,16 +121,17 @@ def privacy(c):
                    headers=sample)
     ok(r.status_code == 200 and "guilty" not in r.json()["reply"], "conflict reply that leaks a secret is replaced")
     with FakeGemini(lambda p: {**good_board(p), "areas": {"kids": KARIM_SECRET, "home": "ok", "money": "ok"}}):
-        board = c.get("/api/home", headers=sample).json()["week"]
+        board = c.get("/api/week", headers=sample).json()["week"]
     ok("guilty" not in json.dumps(board), "board that leaks a secret is replaced")
 
 
 def ai_misbehaving(c):
     sample = demo(c)
     with FakeGemini(good_board) as g:
-        first = c.get("/api/home", headers=sample).json()["week"]
+        first = c.get("/api/week", headers=sample).json()["week"]
         n = g.calls
-        c.get("/api/home", headers=sample)
+        c.get("/api/week", headers=sample)
+        c.get("/api/week", headers=sample)
         c.get("/api/home", headers=sample)
         ok(g.calls == n, "opening the app again doesn't call the AI again (saves the free quota)")
     ok("51/51" in first["message"], "the app's name 51/51 survives the no-numbers guard")
@@ -140,7 +141,7 @@ def ai_misbehaving(c):
     with FakeGemini(lambda p: {"areas": {"kids": "Leila did 7 pickups (70%)", "home": "Even", "money": "Karim paid 1200 euros"},
                                "balance": "a_more", "headline": "Week 42",
                                "messages": {"Leila": "You did 12 things!", "Karim": "Leila did 3 times more."}}) as g:
-        week = c.get("/api/home", headers=sample).json()["week"]
+        week = c.get("/api/week", headers=sample).json()["week"]
         ok(g.calls > 0, "a new entry makes the agents look again")
     ok(not re.search(r"\d|%", json.dumps(week["areas"]) + week["message"] + week["headline"]),
        "numbers and percentages written by the AI never reach the screen")
@@ -149,7 +150,7 @@ def ai_misbehaving(c):
     with FakeGemini(sorted_entry):
         c.post("/api/entries", data={"text": "Ironed shirts"}, headers=sample)
     with FakeGemini(lambda p: {"something": "completely different"}):
-        week = c.get("/api/home", headers=sample).json()["week"]
+        week = c.get("/api/week", headers=sample).json()["week"]
     ok(week and week["areas"]["kids"] and week["message"], "an AI answer in the wrong shape still gives a board")
 
     def down(p):
@@ -157,12 +158,12 @@ def ai_misbehaving(c):
     with FakeGemini(sorted_entry):
         c.post("/api/entries", data={"text": "Bathed the kids"}, headers=sample)
     with FakeGemini(down):
-        week = c.get("/api/home", headers=sample).json()["week"]
+        week = c.get("/api/week", headers=sample).json()["week"]
     ok(week and week.get("stale") and week["areas"]["kids"], "AI down -> last board is shown, marked as older")
     fresh = onboard(c)[0]
     c.post("/api/entries", data={"text": "Cooked"}, headers=fresh)
     with FakeGemini(down):
-        week = c.get("/api/home", headers=fresh).json()["week"]
+        week = c.get("/api/week", headers=fresh).json()["week"]
     ok(week and "resting" in week.get("error", ""), "AI down with no board yet -> friendly message")
     with FakeGemini(down):
         r = c.post("/api/conflicts", json={"question": "the dishes!"}, headers=sample)

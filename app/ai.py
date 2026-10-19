@@ -33,7 +33,10 @@ def _gemini():
     global _client
     if _client is None:
         from google import genai
-        _client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+        from google.genai import types
+        # never let a slow answer freeze the app: give up after 45 seconds
+        _client = genai.Client(api_key=os.environ["GEMINI_API_KEY"],
+                               http_options=types.HttpOptions(timeout=45_000))
     return _client
 
 

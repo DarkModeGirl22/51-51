@@ -9,6 +9,7 @@ Private answers and private notes never leave the server.
 import json
 import random
 import re
+from concurrent.futures import ThreadPoolExecutor
 
 from . import ai
 
@@ -167,13 +168,18 @@ def weekly_board(a, b, entries) -> dict:
     """Returns {"areas": {area: words}, "balance", "messages": {partner_id: text}, "headline"}."""
     names = {a["id"]: a["name"], b["id"]: b["name"]}
     rnd = random.Random()
-    notes = {a["id"]: agent_note(a, b["name"], entries, names),
-             b["id"]: agent_note(b, a["name"], entries, names)}
+    # the two private agents think at the same time, each knowing only its own person
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        fa = pool.submit(agent_note, a, b["name"], entries, names)
+        fb = pool.submit(agent_note, b, a["name"], entries, names)
+        notes = {a["id"]: fa.result(), b["id"]: fb.result()}
 
     if ai.mode() == "practice":
         board = _practice_board(a, b, notes, rnd)
         board["messages"] = _messages(a, b, board["balance"], rnd)
-        return _guard(board, a, b, notes, rnd, entries)
+        board = _guard(board, a, b, notes, rnd, entries)
+        board["lean"] = leans(a, b, notes, entries)
+        return board
 
     prompt = f"""You are the neutral mediator of 51/51, an app that helps a married couple share
 kids, home and money fairly. 51/51 means both give a little more than half.
@@ -211,7 +217,24 @@ Reply as JSON: {{"areas": {{"kids": "...", "home": "...", "money": "..."}}, "bal
     except (KeyError, TypeError, ValueError):
         board = _practice_board(a, b, notes, rnd, entries)
         board["messages"] = _messages(a, b, board["balance"], rnd)
-    return _guard(board, a, b, notes, rnd, entries)
+    board = _guard(board, a, b, notes, rnd, entries)
+    board["lean"] = leans(a, b, notes, entries)
+    return board
+
+
+def leans(a, b, notes, entries) -> dict:
+    """Which way each area's seesaw tips, and how much (0 = level, 1 = a little, 2 = a lot).
+    Shown only as a tilt, never as a number."""
+    out = {}
+    for area in AREAS:
+        la, lb = notes[a["id"]]["load"][area], notes[b["id"]]["load"][area]
+        if la == lb == 0:
+            la = sum(1 for e in entries if e["partner_id"] == a["id"] and e["area"] == area)
+            lb = sum(1 for e in entries if e["partner_id"] == b["id"] and e["area"] == area)
+        diff = la - lb
+        strength = 0 if abs(diff) <= 0 else (1 if abs(diff) <= 2 else 2)
+        out[area] = {"toward": (a["id"] if diff > 0 else b["id"]) if strength else None, "strength": strength}
+    return out
 
 
 def _guard(board: dict, a, b, notes: dict, rnd, entries=()) -> dict:
@@ -304,3 +327,30 @@ def _practice_conflict(asker, other, question: str, entries) -> str:
                 "(Practice AI)")
     return (f"The log shows you've both been doing {topic} lately, so it may feel heavier than it looks. "
             f"Maybe agree on clear turns for {topic} this week and log each one. (Practice AI)")
+
+
+# ---------- your story: past weeks, told in words (rules only, no AI call) ----------
+STORY_EMOJI = {"balanced": "⚖️", "a_more": None, "b_more": None}
+
+
+def week_story(a, b, entries, seed: str) -> dict:
+    """A one-line story of a past week from the logs alone (no AI, so it costs nothing)."""
+    rnd = random.Random(seed)
+    counts = {p["id"]: {area: min(4, sum(1 for e in entries if e["partner_id"] == p["id"] and e["area"] == area))
+                        for area in AREAS} for p in (a, b)}
+    notes = {p["id"]: {"load": counts[p["id"]]} for p in (a, b)}
+    board = _practice_board(a, b, notes, rnd, entries)
+    if board["balance"] == "balanced":
+        busiest = max(AREAS, key=lambda area: counts[a["id"]][area] + counts[b["id"]][area])
+    else:  # lead with the area that explains why one partner carried more
+        lead, other_p = (a, b) if board["balance"] == "a_more" else (b, a)
+        busiest = max(AREAS, key=lambda area: counts[lead["id"]][area] - counts[other_p["id"]][area])
+    lines = [board["areas"][busiest]]
+    other = [x for x in AREAS if x != busiest and "nothing logged" not in board["areas"][x].lower()
+             and "quiet" not in board["areas"][x].lower() and "calm" not in board["areas"][x].lower()]
+    if other:
+        lines.append(board["areas"][rnd.choice(other)])
+    leader = None if board["balance"] == "balanced" else (a if board["balance"] == "a_more" else b)
+    return {"story": " ".join(lines), "balance": board["balance"],
+            "leader": leader["id"] if leader else None,
+            "lean": leans(a, b, notes, entries)}

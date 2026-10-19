@@ -80,3 +80,4 @@ Activity mode:
 - Slices 3 and 4 were built in one pass (they share the mediator), committed as two commits.
 
 - Sample couple reworked at the learner's request — the visitor chooses wife or husband, answers three quick pages of three questions (pre-filled, editable), and joins an invented partner with about two months of logs; real couples keep the two original buttons.
+- Home page reworked after the learner's first look on Render ("so empty"): the page now appears instantly and the AI's view loads separately (/api/week), the two private agents run in parallel, and the sample home shows the whole week day by day, 'Your story' (past weeks in words), earlier talks with the mediator, and a seesaw per area that tips toward whoever carried more, without numbers.

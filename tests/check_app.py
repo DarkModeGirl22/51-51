@@ -123,15 +123,15 @@ def slice3(c):
     from app import agents, ai
     import re as _re
     wife, husband, _ = onboard(c)
-    h = c.get("/api/home", headers=wife).json()
+    h = c.get("/api/week", headers=wife).json()
     ok(h["week"] is None, "empty week -> invitation to log, no judgement")
 
     for t in ["Picked up the kids from school", "Did the dishes", "Cooked dinner", "Picked up Sarah",
               "Did the laundry"]:
         c.post("/api/entries", data={"text": t}, headers=wife)
     c.post("/api/entries", data={"text": "Paid the mortgage"}, headers=husband)
-    hw = c.get("/api/home", headers=wife).json()
-    hh = c.get("/api/home", headers=husband).json()
+    hw = c.get("/api/week", headers=wife).json()
+    hh = c.get("/api/week", headers=husband).json()
     board_text = json.dumps(hw["week"]) + json.dumps(hh["week"])
     ok(all(hw["week"]["areas"][a] for a in ("kids", "home", "money")), "board has words for kids, home, money")
     ok(not _re.search(r"\d|%", json.dumps(hw["week"]["areas"]) + hw["week"]["message"] + hh["week"]["message"]),
@@ -149,8 +149,8 @@ def slice3(c):
     for t in ["Picked up the kids", "Did the dishes", "Paid the bill"]:
         c.post("/api/entries", data={"text": t}, headers=w2)
         c.post("/api/entries", data={"text": t}, headers=h2)
-    a = c.get("/api/home", headers=w2).json()["week"]["message"]
-    b = c.get("/api/home", headers=h2).json()["week"]["message"]
+    a = c.get("/api/week", headers=w2).json()["week"]["message"]
+    b = c.get("/api/week", headers=h2).json()["week"]["message"]
     ok(a == b and ("balanced" in a.lower() or "team" in a.lower()), "balanced week -> both praised")
 
     # shared facts: 2 kids vs 3 kids
@@ -191,6 +191,7 @@ def slice3(c):
 
 
 def slice4(c):
+    import re as _re
     from app import sample
     from app import db as _db
     d = c.post("/api/demo", json={"role": "woman", "name": "Leila", "colour": "pink",
@@ -198,7 +199,15 @@ def slice4(c):
     leila = {"X-Partner-Key": d["key"]}
     h = c.get("/api/home", headers=leila).json()
     ok(h["sample"] and h["partner"]["name"] == "Karim", "sample: you join as the wife, Karim is already there")
-    ok(h["week"] and h["week"]["areas"]["kids"], "sample couple has a full week on the board")
+    wk = c.get("/api/week", headers=leila).json()["week"]
+    ok(wk and wk["areas"]["kids"], "sample couple has a full week on the board")
+    ok(len(h["entries"]) > 10, "the home shows the whole week day by day, not just today")
+    ok(len(h["story"]) >= 5 and all(not _re.search(r"\d|%", w["story"]) for w in h["story"]),
+       "'Your story' tells past weeks in words, never numbers")
+    ok(any(w["leader"] for w in h["story"]), "the story shows weeks where one partner carried more")
+    ok(len(h["talks"]) == 2, "two earlier talks with the mediator are there")
+    ok(set(wk["lean"]) == {"kids", "home", "money"} and wk["lean"]["kids"]["toward"] == h["me"]["id"],
+       "the kids seesaw tips toward the wife, who did the pickups")
     with _db.connect() as conn:
         n = conn.execute("SELECT COUNT(*) FROM entries e JOIN partners p ON p.id=e.partner_id WHERE p.key=?",
                          (d["key"],)).fetchone()[0]
