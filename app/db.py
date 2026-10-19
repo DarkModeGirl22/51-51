@@ -50,6 +50,7 @@ CREATE TABLE IF NOT EXISTS conflicts (
     partner_id INTEGER NOT NULL REFERENCES partners(id),
     question TEXT NOT NULL,
     reply TEXT NOT NULL,
+    nudge TEXT,                        -- kind suggestion shown to the OTHER partner (never the complaint)
     created_at TEXT NOT NULL
 );
 """
@@ -59,6 +60,9 @@ def init_db() -> None:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     with connect() as db:
         db.executescript(SCHEMA)
+        cols = [r[1] for r in db.execute("PRAGMA table_info(conflicts)")]
+        if "nudge" not in cols:  # databases created before nudges existed
+            db.execute("ALTER TABLE conflicts ADD COLUMN nudge TEXT")
 
 
 @contextmanager

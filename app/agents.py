@@ -258,12 +258,21 @@ def _guard(board: dict, a, b, notes: dict, rnd, entries=()) -> dict:
 
 
 # ---------- mediator: the conflict button ----------
-def conflict_reply(asker, other, question: str, entries) -> str:
+def conflict_reply(asker, other, question: str, entries, history=()) -> dict:
+    """A PRIVATE chat between one partner and the mediator.
+    Returns {"reply": for the asker only, "nudge": a kind suggestion for the other partner, or None}.
+    The other partner never sees the complaint itself."""
     names = {asker["id"]: asker["name"], other["id"]: other["name"]}
     if ai.mode() == "practice":
         return _practice_conflict(asker, other, question, entries)
+    past = "\n".join(f"{asker['name']}: {q}\nYou: {r}" for q, r in history[-6:]) or "(this is the start of the chat)"
     prompt = f"""You are the neutral mediator of 51/51 for a married couple, {asker['name']} and {other['name']}.
-{asker['name']} pressed the conflict button and wrote:
+This is a PRIVATE chat with {asker['name']} only; {other['name']} will never see it.
+
+Earlier in this chat:
+{past}
+
+{asker['name']} now writes:
 "{question}"
 
 Shared household log of the last few weeks (date · who · area · what):
@@ -273,27 +282,40 @@ Private context (for YOUR understanding only, NEVER quote or reveal it):
 {asker['name']}: {private_context(asker)}
 {other['name']}: {private_context(other)}
 
-Answer both of them (they both read your reply), calmly and neutrally:
-- Look at what was actually logged. Notice patterns by yourself (for example: they used to take turns
-  with the dishes, but lately one person did it every time). Say what the log shows, plainly and kindly.
-- If the log supports the complaint, propose ONE concrete, fair way to correct it (e.g. "the next turns
-  of dishes go to {other['name']}"). If it doesn't, gently show the effort that may be invisible.
-  If the log has nothing on the topic, say so and suggest both log it from now on.
-- Never declare anyone guilty. Never judge by gender. Never reveal private details (salary, feelings,
-  health, sacrifices); you may consider them to be fair, e.g. someone's working hours.
-- If they quote numbers ("I picked up the kids ten times, he did it twice"), take them seriously:
-  acknowledge the feeling first, then check the claim against the log and say plainly what it shows.
-  You may mention simple counts from the log ("four of the last five pickups were yours"),
-  but never percentages, scores or "who is worse".
-- Short: three or four sentences, warm, no lists.
-Reply as JSON: {{"reply": "..."}}"""
+1. "reply" (to {asker['name']}, calm and neutral):
+- Acknowledge the feeling in a few words, then say what the log actually shows. Notice patterns by yourself
+  (e.g. they used to take turns with the dishes; lately one person did it every time).
+- If the log supports the complaint, say what you'll suggest to {other['name']}. If it doesn't, gently show
+  the effort that may be invisible. If the log has nothing on the topic, say so and suggest logging it.
+- If they quote numbers, take them seriously and check them against the log. You may mention simple
+  counts from the log, never percentages, scores or "who is worse".
+- Never declare anyone guilty, never judge by gender, never reveal private details of either partner.
+- At most three short sentences (under seventy words). Warm, plain, no lists, no emojis.
+2. "nudge" (shown to {other['name']} as a notification from 51/51), or null if nothing should change:
+- One or two friendly sentences suggesting ONE concrete, practical thing {other['name']} could do
+  (e.g. take the next dentist appointment from booking to finish; put school events in a shared calendar;
+  take the next turns of dishes). Fair to {other['name']}'s situation.
+- It must NOT reveal or quote what {asker['name']} said, and must not sound like a complaint was made.
+  Write it as a helpful idea based on the week's log.
+Reply as JSON: {{"reply": "...", "nudge": "..." or null}}"""
     try:
-        reply = str(ai.ask_json(prompt)["reply"]).strip()
+        r = ai.ask_json(prompt)
+        reply = str(r["reply"]).strip()
+        nudge = str(r.get("nudge") or "").strip() or None
     except (KeyError, TypeError):
         return _practice_conflict(asker, other, question, entries)
-    if leaks(reply, [asker, other]):
+    if leaks(reply, [asker, other]) or (nudge and leaks(nudge, [asker, other])):
         return _practice_conflict(asker, other, question, entries)
-    return reply
+    if nudge and _echoes(nudge, question):  # the nudge must never give the complaint away
+        nudge = _practice_conflict(asker, other, question, entries)["nudge"]
+    return {"reply": reply, "nudge": nudge}
+
+
+def _echoes(text: str, source: str) -> bool:
+    """True if a run of 5+ words from `source` appears in `text`."""
+    t = " ".join(re.findall(r"[\w']+", text.lower()))
+    words = re.findall(r"[\w']+", source.lower())
+    return any(" ".join(words[i:i + 5]) in t for i in range(len(words) - 4))
 
 
 TOPICS = {
@@ -304,29 +326,36 @@ TOPICS = {
 }
 
 
-def _practice_conflict(asker, other, question: str, entries) -> str:
+def _practice_conflict(asker, other, question: str, entries) -> dict:
     q = question.lower()
     topic = next((t for t, words in TOPICS.items() if any(w in q for w in words)), None)
     if topic is None:
-        return (f"I hear you, {asker['name']}. The log doesn't show enough about this yet. "
-                "From today, could you both log it each time it's done? Then I can show you clearly "
-                "who's been carrying it, and suggest a fair way to share it. (Practice AI)")
+        return {"reply": f"I hear you, {asker['name']}. The log doesn't show enough about this yet. "
+                         "If you both log it each time it's done, I can show you clearly who's been carrying it. "
+                         "(Practice AI)",
+                "nudge": None}
     words = TOPICS[topic]
     hits = [e for e in sorted(entries, key=lambda e: e["created_at"]) if any(w in e["summary"].lower() for w in words)]
     if not hits:
-        return (f"I hear you, {asker['name']}. Nobody has logged {topic} lately, so I can't see who's been "
-                f"doing it. Could you both log {topic} from now on? (Practice AI)")
+        return {"reply": f"I hear you, {asker['name']}. Nobody has logged {topic} lately, so I can't see who's been "
+                         f"doing it. Could you both log {topic} from now on? (Practice AI)",
+                "nudge": f"Small idea for this week: log {topic} each time it's done, so it stays visible. (Practice AI)"}
     recent = hits[-4:]
     doers = {e["partner_id"] for e in recent}
     name = {asker["id"]: asker["name"], other["id"]: other["name"]}
     if len(doers) == 1:
         doer = next(iter(doers))
-        helper = other if doer == asker["id"] else asker
-        return (f"Looking at the log, {name[doer]} has done {topic} every time lately. That's a lot to carry alone. "
-                f"A fair fix: the next turns of {topic} go to {helper['name']}, and you both log it so it stays visible. "
-                "(Practice AI)")
-    return (f"The log shows you've both been doing {topic} lately, so it may feel heavier than it looks. "
-            f"Maybe agree on clear turns for {topic} this week and log each one. (Practice AI)")
+        if doer == asker["id"]:
+            return {"reply": f"Looking at the log, you've done {topic} every time lately. That's a lot to carry alone. "
+                             f"I'll suggest to {other['name']} that the next turns of {topic} go to them. (Practice AI)",
+                    "nudge": f"{asker['name']} has done {topic} every time lately. Could you take the next turns? "
+                             "(Practice AI)"}
+        return {"reply": f"Looking at the log, {name[doer]} has done {topic} every time lately, so it may feel "
+                         f"different from where you stand. Maybe pick up the next turn of {topic} yourself. (Practice AI)",
+                "nudge": None}
+    return {"reply": f"The log shows you've both been doing {topic} lately, so it may feel heavier than it looks. "
+                     f"Clear turns for {topic} this week could help. (Practice AI)",
+            "nudge": f"Idea for this week: agree on clear turns for {topic} and log each one. (Practice AI)"}
 
 
 # ---------- your story: past weeks, told in words (rules only, no AI call) ----------

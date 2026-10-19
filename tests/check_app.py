@@ -205,7 +205,7 @@ def slice4(c):
     ok(len(h["story"]) >= 5 and all(not _re.search(r"\d|%", w["story"]) for w in h["story"]),
        "'Your story' tells past weeks in words, never numbers")
     ok(any(w["leader"] for w in h["story"]), "the story shows weeks where one partner carried more")
-    ok(len(h["talks"]) == 2, "two earlier talks with the mediator are there")
+    ok(len(h["nudges"]) == 1 and "thank" in h["nudges"][0]["text"].lower(), "the wife has one kind nudge from an earlier chat, not the chat itself")
     ok(set(wk["lean"]) == {"kids", "home", "money"} and wk["lean"]["kids"]["toward"] == h["me"]["id"],
        "the kids seesaw tips toward the wife, who did the pickups")
     with _db.connect() as conn:
@@ -225,11 +225,20 @@ def slice4(c):
     ok(c.get("/sample").status_code == 200 and c.get("/conflict").status_code == 200, "sample and conflict pages load")
 
     r = c.post("/api/conflicts", json={"question": "I'm tired of always doing the dishes!"}, headers=leila)
-    ok(r.status_code == 200 and "Ryan" in r.json()["reply"], "dishes complaint -> reply proposes Ryan takes turns")
-    ok("Emily" in r.json()["reply"] and "every time" in r.json()["reply"], "reply points to the pattern in the logs")
-    seen = c.get("/api/conflicts", headers=karim).json()["conflicts"]
-    ok(seen and seen[0]["question"].startswith("I'm tired"), "Ryan can see the question and the reply")
-    reply = seen[0]["reply"].lower()
+    ok(r.status_code == 200 and "Ryan" in r.json()["reply"], "dishes complaint -> reply says Ryan will get a suggestion")
+    ok("every time" in r.json()["reply"] and r.json()["nudged"], "reply points to the pattern and a nudge is sent")
+    mine = c.get("/api/conflicts", headers=leila).json()["conflicts"]
+    ok([m["question"] for m in mine][-1].startswith("I'm tired") and mine[0]["created_at"] < mine[-1]["created_at"],
+       "Emily's chat is in order, oldest first, ending with her new message")
+    his = c.get("/api/conflicts", headers=karim).json()["conflicts"]
+    ok(all("tired" not in m["question"] and "dentist" not in m["question"] for m in his),
+       "Ryan never sees Emily's private chat")
+    hh = c.get("/api/home", headers=karim).json()
+    ok(any("dishes" in n["text"] for n in hh["nudges"]) and not any("tired" in n["text"].lower() for n in hh["nudges"]),
+       "Ryan gets a kind nudge about the dishes, without Emily's words")
+    ok(not any("dentist" in n["text"] and "booking" not in n["text"] for n in c.get("/api/home", headers=leila).json()["nudges"]),
+       "Emily doesn't receive the nudges meant for Ryan")
+    reply = r.json()["reply"].lower()
     ok(not any(p in reply for p in ["part-time", "guilty", "3:30", "afford"]),
        "reply reveals no private answers")
     solo_key = c.post("/api/couples", json=WIFE).json()["key"]

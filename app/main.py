@@ -247,13 +247,14 @@ def home(x_partner_key: str | None = Header(default=None),
         start, _ = week_window(couple, x_tz_offset)
         entries = week_entries(conn, me["couple_id"], start)
         past = story(conn, me, partner, start)
-        talks = conn.execute("SELECT * FROM conflicts WHERE couple_id=? ORDER BY created_at DESC LIMIT 2",
-                             (me["couple_id"],)).fetchall()
+        nudges = conn.execute(
+            "SELECT nudge, created_at FROM conflicts WHERE couple_id=? AND partner_id!=? AND nudge IS NOT NULL"
+            " ORDER BY created_at DESC LIMIT 3", (me["couple_id"], me["id"])).fetchall()
     return {"me": public(me), "partner": public(partner), "code": couple["code"],
             "sample": bool(couple["is_sample"]), "entries": entries, "ai_mode": ai.mode(),
             "fact_question": shared_fact_question(me, partner), "story": past,
-            "talks": [{"partner_id": t["partner_id"], "question": t["question"], "reply": t["reply"],
-                       "created_at": t["created_at"]} for t in talks],
+            # suggestions that came from the OTHER partner's private chat; the complaint itself never leaves it
+            "nudges": [{"text": n["nudge"], "created_at": n["created_at"]} for n in nudges],
             "my_kids": {"count": me["kids_count"], "ages": me["kids_ages"]}}
 
 
@@ -366,28 +367,32 @@ def ask_conflict(body: ConflictBody, x_partner_key: str | None = Header(default=
         if partner is None:
             raise HTTPException(409, "Your partner hasn't joined yet, so there's nobody to mediate with.")
         entries = recent_entries(conn, me["couple_id"])
+        history = [(r["question"], r["reply"]) for r in conn.execute(
+            "SELECT question, reply FROM conflicts WHERE partner_id=? ORDER BY created_at", (me["id"],))]
     try:
-        reply = agents.conflict_reply(me, partner, body.question.strip(), entries)
+        answer = agents.conflict_reply(me, partner, body.question.strip(), entries, history)
     except ai.AIError:
         raise HTTPException(503, "The AI is resting for a minute. Take a breath and try again shortly.")
     created = datetime.now(timezone.utc).isoformat()
     with db.connect() as conn:
-        cid = conn.execute("INSERT INTO conflicts (couple_id, partner_id, question, reply, created_at)"
-                           " VALUES (?,?,?,?,?)",
-                           (me["couple_id"], me["id"], body.question.strip(), reply, created)).lastrowid
-    return {"id": cid, "reply": reply, "created_at": created}
+        cid = conn.execute("INSERT INTO conflicts (couple_id, partner_id, question, reply, nudge, created_at)"
+                           " VALUES (?,?,?,?,?,?)",
+                           (me["couple_id"], me["id"], body.question.strip(), answer["reply"],
+                            answer["nudge"], created)).lastrowid
+    return {"id": cid, "reply": answer["reply"], "created_at": created, "nudged": bool(answer["nudge"])}
 
 
 @app.get("/api/conflicts")
 def list_conflicts(x_partner_key: str | None = Header(default=None)):
+    """Only MY private chat with the mediator, oldest first."""
     with db.connect() as conn:
         me = me_from_key(conn, x_partner_key)
         partner = other_partner(conn, me)
-        rows = conn.execute("SELECT * FROM conflicts WHERE couple_id=? ORDER BY created_at DESC",
-                            (me["couple_id"],)).fetchall()
+        rows = conn.execute("SELECT * FROM conflicts WHERE partner_id=? ORDER BY created_at",
+                            (me["id"],)).fetchall()
     return {"me": public(me), "partner": public(partner),
-            "conflicts": [{"id": r["id"], "partner_id": r["partner_id"], "question": r["question"],
-                           "reply": r["reply"], "created_at": r["created_at"]} for r in rows]}
+            "conflicts": [{"id": r["id"], "question": r["question"], "reply": r["reply"],
+                           "nudged": bool(r["nudge"]), "created_at": r["created_at"]} for r in rows]}
 
 
 # ---------- sample couple (for trying the app and the demo video) ----------

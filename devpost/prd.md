@@ -17,7 +17,7 @@ Source: `scope.md > The Unique Kernel`, `scope.md > Who It's For`.
 5. If an obvious shared fact doesn't match (she says 5 kids, he says 3), a question appears on the **shared board** for the couple to settle.
 6. **Every day**, each partner opens the app and sees today's activity for both of them, and can add something new (text or photo).
 7. The **weekly board** describes, in words, how much each partner carried in kids, home and money this week, plus a **reality-check message**.
-8. **When one of them is upset**, they press the **conflict button**, explain why, and get a neutral AI reply with a way to fix it — which the other partner can also see.
+8. **When one of them is upset**, they press the **conflict button** and talk it out in a **private chat** with the neutral mediator. If something should change, the other partner receives a **kind suggestion** in their notifications — never the complaint itself.
 
 Source: `scope.md > The Core Loop`.
 
@@ -30,7 +30,8 @@ Source: `scope.md > The Core Loop`.
   - An **Add** area: write a text entry or upload a photo (receipt, bank payment).
   - **This week** board: the balance per area (kids / home / money) in words.
   - A **reality-check message**.
-- **Conflict**: a question-and-answer space. The upset partner writes; the AI answers neutrally; both partners see the exchange.
+- **Conflict ("Talk it out")**: a private chat between one partner and the mediator, oldest message first, with the message box at the bottom.
+- **Notifications (bell)**: the personal weekly message and kind suggestions from 51/51.
 - **Shared-fact check**: shown on the board only when the partners' obvious facts disagree.
 
 ## Look and Feel
@@ -91,11 +92,12 @@ Each partner, alone, answers two kinds of questions:
 - Always visible at the top. The upset partner explains, in their own words, why they're upset.
 - The AI replies **neutrally**, based on what both partners logged and their contexts. It does not declare "this person is guilty"; it proposes **a way to correct it**.
 - The AI notices patterns from the logs by itself — e.g. they usually alternate the dishes, but lately she's done them every time — nobody has to type in a rule.
-- The exchange is a simple question-and-answer, not a report. The other partner can see it.
+- The exchange is a private chat (message, reply, message, reply), not a report. Only the person who wrote it can see it.
+- If something should change, the other partner gets a kind, practical suggestion in their notifications (e.g. "take the next dentist appointment from booking to finish; a shared calendar helps"). It never quotes or reveals the complaint.
 - They talk *to the AI* instead of at each other.
   - [ ] With logs showing one partner doing the dishes repeatedly, a complaint about dishes gets a reply that points to that pattern and proposes a fix (e.g. the other partner takes the next turns).
   - [ ] The reply contains no blame words about a person's gender and reveals no private answers.
-  - [ ] The other partner can see the question and reply.
+  - [ ] The other partner never sees the chat, only a kind suggestion that doesn't quote it.
 
 ## States and Boundaries
 - **First use** — onboarding first; the home screen isn't available until the person finishes.
@@ -104,12 +106,13 @@ Each partner, alone, answers two kinds of questions:
 - **Wrong partner code** — a friendly message; try again.
 - **Unreadable photo** — the app says it couldn't read it and lets the person describe it in text.
 - **Shared facts disagree** — the board shows the question until it's settled.
-- **Privacy** — private answers stay with each person's agent; only logs, the board, messages and conflict exchanges are shared.
+- **Privacy** — private answers and conflict chats stay with each person; only logs, the board and kind suggestions are shared.
 
 ## Product Decisions
 - Words, never numbers — so the couple never gets a number as an excuse to start a fight.
 - Weekly board, not monthly — short enough to correct things while they're fresh.
 - Conflict button kept; audio logging dropped for now — the conflict button better proves the idea.
+- Conflict chats are private to each partner; the other partner only gets a kind suggestion — decided after trying the first version, where both could read everything.
 - Either spouse can start and invite the other.
 - Private answers are never shared; obvious shared facts must match.
 - The AI decides what counts as a lot ("considers"), not a fixed formula.

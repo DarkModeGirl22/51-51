@@ -15,66 +15,93 @@
     <div id="couple" class="row"></div>
   </div>
 
-  <div class="card">
-    <h1>Something's bothering you?</h1>
-    <p class="muted">Tell the 51/51 mediator, not your partner. It looks at what you both logged and answers you both, calmly. Your partner will see your message and the answer, but never anything you told your private agent.</p>
-    <form id="ask">
-      <textarea id="question" maxlength="1000" placeholder="e.g. I'm tired of always being the one doing the dishes." required></textarea>
-      <div class="row" style="margin-top:12px">
-        <button type="submit" class="calm" id="send">Ask the mediator</button>
-      </div>
-      <p class="error hidden" id="error"></p>
-    </form>
-  </div>
+  <section class="card chat">
+    <header class="chat-head">
+      <h1>Talk it out</h1>
+      <p class="muted">A private chat between you and the 51/51 mediator. <span id="partner-line">Your partner</span> never sees it. If something should change, the mediator sends them a kind suggestion, never your words.</p>
+    </header>
 
-  <div id="list"></div>
+    <div class="thread" id="thread" aria-live="polite"></div>
+
+    <form class="composer" id="ask">
+      <textarea id="question" maxlength="1000" rows="2" placeholder="What's bothering you?" aria-label="Your message" required></textarea>
+      <button type="submit" id="send">Send</button>
+    </form>
+    <p class="error hidden" id="error"></p>
+  </section>
 </main>
 <script src="/static/app.js"></script>
 <script>
   if (!getKey()) location.href = "/";
-  let people = {};
+  let me = null, partner = null;
+  const thread = document.getElementById("thread");
+
+  function when(iso) {
+    return new Date(iso).toLocaleString("en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  }
+  function mine(text, iso) {
+    return el("div", { class: "msg mine" },
+      el("div", { class: "bubble ask c-" + me.colour + "-soft" }, text),
+      el("div", { class: "stamp" }, iso ? when(iso) : "Sending"));
+  }
+  function theirs(text, nudged) {
+    const parts = [el("div", { class: "bubble ai" }, text)];
+    if (nudged && partner) parts.push(el("div", { class: "stamp" }, "A kind suggestion was sent to " + partner.name + "."));
+    return el("div", { class: "msg ai" }, el("div", { class: "who-ai" }, "Mediator"), ...parts);
+  }
+  function scrollDown() { thread.scrollTop = thread.scrollHeight; }
 
   async function load() {
     let d;
     try { d = await api("/api/conflicts"); }
-    catch (ex) { if (ex.status === 401) return forget(); return alert(ex.message); }
-    people = { [d.me.id]: d.me };
-    if (d.partner) people[d.partner.id] = d.partner;
+    catch (ex) { if (ex.status === 401) return forget(); return showError(ex.message); }
+    me = d.me; partner = d.partner;
     const couple = document.getElementById("couple");
     couple.innerHTML = "";
     couple.append(whoChip(d.me));
     if (d.partner) couple.append(" & ", whoChip(d.partner));
-    const list = document.getElementById("list");
-    list.innerHTML = "";
+    if (partner) document.getElementById("partner-line").textContent = partner.name;
+    thread.innerHTML = "";
     if (!d.conflicts.length) {
-      list.append(el("div", { class: "card" }, el("div", { class: "empty" }, "No conflicts so far. Lovely.")));
-      return;
+      thread.append(el("div", { class: "msg ai" }, el("div", { class: "who-ai" }, "Mediator"),
+        el("div", { class: "bubble ai" }, "Hi " + me.name + ". Tell me what's bothering you. I'll look at what you both logged and answer you calmly.")));
     }
-    for (const c of d.conflicts) {
-      const who = people[c.partner_id] || { name: "?", colour: "pink" };
-      const when = new Date(c.created_at).toLocaleString([], { weekday: "long", hour: "2-digit", minute: "2-digit" });
-      list.append(el("div", { class: "card" },
-        el("div", { class: "bubble ask c-" + who.colour + "-soft" },
-          el("div", { class: "meta" }, who.name + " · " + when), c.question),
-        el("div", { class: "bubble ai" },
-          el("div", { class: "meta" }, "Mediator, to both of you"), c.reply)));
-    }
+    for (const c of d.conflicts) thread.append(mine(c.question, c.created_at), theirs(c.reply, c.nudged));
+    scrollDown();
   }
+
+  function showError(msg) {
+    const err = document.getElementById("error");
+    err.textContent = msg; err.classList.remove("hidden");
+  }
+
+  const box = document.getElementById("question");
+  box.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); document.getElementById("ask").requestSubmit(); }
+  });
 
   document.getElementById("ask").onsubmit = async (ev) => {
     ev.preventDefault();
-    const err = document.getElementById("error");
-    err.classList.add("hidden");
+    const text = box.value.trim();
+    if (text.length < 3) return;
+    document.getElementById("error").classList.add("hidden");
+    const sent = mine(text, null);
+    const typing = el("div", { class: "msg ai" }, el("div", { class: "who-ai" }, "Mediator"),
+      el("div", { class: "bubble ai typing" }, el("span", { class: "thinking" }, "Reading your logs",
+        el("i", {}, "."), el("i", {}, "."), el("i", {}, "."))));
+    thread.append(sent, typing);
+    box.value = ""; scrollDown();
     const btn = document.getElementById("send");
-    btn.disabled = true; btn.textContent = "The mediator is reading your logs…";
+    btn.disabled = true;
     try {
-      await api("/api/conflicts", { method: "POST", json: { question: document.getElementById("question").value } });
-      document.getElementById("question").value = "";
-      await load();
+      const r = await api("/api/conflicts", { method: "POST", json: { question: text } });
+      sent.querySelector(".stamp").textContent = when(r.created_at);
+      typing.replaceWith(theirs(r.reply, r.nudged));
     } catch (ex) {
-      err.textContent = ex.message; err.classList.remove("hidden");
+      typing.remove(); sent.remove(); box.value = text;
+      showError(ex.message);
     } finally {
-      btn.disabled = false; btn.textContent = "Ask the mediator";
+      btn.disabled = false; box.focus(); scrollDown();
     }
   };
   load();

@@ -107,6 +107,7 @@ def privacy(c):
     ok("Secret family A entry" not in other, "one couple never sees another couple's entries")
     c.post("/api/conflicts", json={"question": "dishes"}, headers=a_wife)
     ok(not c.get("/api/conflicts", headers=b_wife).json()["conflicts"], "or their conflicts")
+    ok(not c.get("/api/conflicts", headers=a_husband).json()["conflicts"], "a husband never sees his wife's private chat")
 
     sample = demo(c)
     r = c.get("/api/couples/" + c.get("/api/home", headers=sample).json()["code"])
@@ -173,16 +174,27 @@ def ai_misbehaving(c):
     ok(r.json()["area"] == "unsorted", "AI inventing an area -> entry kept as 'to sort'")
 
 
+def ryan_key(c, headers):
+    from app import db
+    with db.connect() as conn:
+        return conn.execute("SELECT p.key FROM partners p WHERE p.couple_id=(SELECT couple_id FROM partners WHERE key=?)"
+                            " AND p.key!=?", (headers["X-Partner-Key"], headers["X-Partner-Key"])).fetchone()[0]
+
+
 def mediator_logic(c):
     sample = demo(c)
     r = c.post("/api/conflicts", json={"question": "He never walks the dog"}, headers=sample)
     ok("log" in r.json()["reply"].lower(), "complaint with nothing in the logs -> suggests logging it")
     r = c.post("/api/conflicts", json={"question": "Why do I always have to do the dishes"}, headers=sample)
-    ok("Ryan" in r.json()["reply"], "dishes complaint from the wife -> next turns go to Ryan")
+    ok("Ryan" in r.json()["reply"], "dishes complaint from the wife -> Ryan gets the suggestion")
+    with FakeGemini(lambda p: {"reply": "I hear you.", "nudge": "Emily said: Why do I always have to do the dishes"}):
+        r = c.post("/api/conflicts", json={"question": "Why do I always have to do the dishes"}, headers=sample)
+    nud = c.get("/api/home", headers={"X-Partner-Key": ryan_key(c, sample)}).json()["nudges"][0]["text"]
+    ok("Why do I always" not in nud, "a nudge that quotes the complaint is replaced before Ryan sees it")
     man = demo(c, "man")
     r = c.post("/api/conflicts", json={"question": "She says I do nothing with the dishes"}, headers=man)
-    ok("Emily" in r.json()["reply"] and "Ryan" in r.json()["reply"],
-       "same pattern seen from the husband's side -> the same fair fix, no gender bias")
+    ok("Emily" in r.json()["reply"] and "every time" in r.json()["reply"],
+       "same pattern seen from the husband's side -> same facts, no gender bias")
 
     r = c.post("/api/conflicts", json={"question": "I picked up the kids 10 times this month and he did it only 2 times!!"},
                headers=sample)

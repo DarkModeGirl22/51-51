@@ -85,13 +85,6 @@
         <div id="story-list" class="timeline"></div>
       </div>
 
-      <div class="card hidden" id="talks">
-        <div class="panel-title">
-          <h2>Talks with the mediator</h2>
-          <a class="small" href="/conflict">See all</a>
-        </div>
-        <div id="talks-list"></div>
-      </div>
     </section>
   </div>
 
@@ -120,7 +113,7 @@
     document.getElementById("code").textContent = H.code;
     document.getElementById("practice").classList.toggle("hidden", H.ai_mode !== "practice");
     document.getElementById("sample").classList.toggle("hidden", !H.sample);
-    drawFact(); drawDays(); drawStory(); drawTalks();
+    drawFact(); drawDays(); drawStory();
     WEEK_MSG = null; drawNotifs();
     loadWeek();
   }
@@ -143,27 +136,24 @@
     if (H.partner && !WEEK_MSG) items.push(el("div", { class: "notif" },
       el("div", { class: "mark", style: "background:var(--faint)" }, icon("heart")),
       el("div", {}, el("div", { class: "text plain" }, thinking("Your agents are talking about your week")))));
-    const people = { [H.me.id]: H.me };
-    if (H.partner) people[H.partner.id] = H.partner;
-    for (const t of (H.talks || []).slice(0, 1)) {
-      const who = people[t.partner_id] || H.me;
+    for (const n of (H.nudges || [])) {
+      const day = new Date(n.created_at).toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
       items.push(el("div", { class: "notif" },
         el("div", { class: "mark", style: "background:var(--calm)" }, icon("talk")),
-        el("div", {}, el("div", { class: "when" }, "The mediator answered " + who.name),
-          el("div", { class: "text plain" }, t.reply.length > 140 ? t.reply.slice(0, 140) + "…" : t.reply),
-          el("a", { href: "/conflict" }, "Open the conversation"))));
+        el("div", {}, el("div", { class: "when" }, "A suggestion from 51/51, " + day),
+          el("div", { class: "text plain" }, n.text))));
     }
     if (!items.length) items.push(el("div", { class: "notif" }, el("div", { class: "text plain muted" }, "No news yet.")));
     panel.append(...items);
     const old = bell.querySelector(".dot");
     if (old) old.remove();
-    if (WEEK_MSG && !seen) bell.append(el("span", { class: "dot" }));
+    if ((WEEK_MSG || (H.nudges || []).length) && !seen) bell.append(el("span", { class: "dot" }));
   }
   function toggleNotifs(open) {
     notifOpen = open ?? !notifOpen;
     document.getElementById("notif-panel").classList.toggle("hidden", !notifOpen);
     bell.setAttribute("aria-expanded", String(notifOpen));
-    if (notifOpen && WEEK_MSG) { seen = true; drawNotifs(); }
+    if (notifOpen) { seen = true; drawNotifs(); }
   }
   bell.onclick = (e) => { e.stopPropagation(); toggleNotifs(); };
   document.addEventListener("click", (e) => {
@@ -298,26 +288,6 @@
         el("div", {},
           el("div", { class: "story-head" }, el("b", {}, w.label), lean),
           el("div", { class: "story-text" }, colourNames(w.story)))));
-    }
-  }
-
-  // ---------- talks with the mediator ----------
-  function drawTalks() {
-    const box = document.getElementById("talks");
-    const list = document.getElementById("talks-list");
-    list.innerHTML = "";
-    box.classList.toggle("hidden", !H.talks || !H.talks.length);
-    if (!H.talks || !H.talks.length) return;
-    const people = { [H.me.id]: H.me };
-    if (H.partner) people[H.partner.id] = H.partner;
-    for (const t of H.talks) {
-      const who = people[t.partner_id] || { name: "?", colour: "pink" };
-      const when = new Date(t.created_at).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
-      list.append(el("div", { class: "talk" },
-        el("div", { class: "bubble ask c-" + who.colour + "-soft" },
-          el("div", { class: "meta" }, who.name + ", " + when), t.question),
-        el("div", { class: "bubble ai" },
-          el("div", { class: "meta" }, "Mediator, to both of you"), t.reply)));
     }
   }
 

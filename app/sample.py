@@ -107,18 +107,21 @@ def create_sample_couple(conn, code: str, me: dict, role: str) -> dict:
     w_name = me["name"] if role == "woman" else partner["name"]
     m_name = partner["name"] if role == "woman" else me["name"]
     talks = [
-        (33, m_id, "She keeps saying I never help at home. I paid every bill this month and took the kids "
-                   "to football every Saturday!",
-         f"I hear you, {m_name}. The log shows you covered the bills and the Saturday football, and that's real "
-         f"effort that's easy to miss on a weekday evening. It also shows {w_name} did every school pickup. "
-         "You're both carrying a lot, just in different places. Maybe tell each other what you saw today."),
+        (33, m_id,
+         "She keeps saying I never help at home. I paid every bill this month and took the kids to football every Saturday!",
+         f"I hear you, {m_name}. The log shows you covered the bills and every Saturday football trip, which is real "
+         f"effort that's easy to miss on a weekday evening. It also shows {w_name} did every school pickup, so you're "
+         "both carrying a lot, in different places.",
+         f"This month {m_name} covered the bills and the Saturday football trips. "
+         "A quick thank-you tonight would mean a lot."),
         (19, w_id, "Why am I the only one who remembers the dentist and the school canteen?",
-         f"The log shows {w_name} took care of the dentist and the canteen this month. That kind of remembering "
-         f"is invisible work. A fair fix: {m_name} takes the next appointment from start to finish, "
-         "booking included, and logs it."),
+         f"That kind of remembering is real work, {w_name}, and the log shows it has been yours this month. "
+         f"I'll suggest {m_name} takes the next appointment from start to finish.",
+         "Could you take the next dentist appointment from booking to finish? "
+         "Putting school dates in a shared calendar makes them easy to keep track of."),
     ]
-    for days, who, question, reply in talks:
+    for days, who, question, reply, nudge in talks:
         when = (now - timedelta(days=days)).replace(hour=21, minute=10, second=0, microsecond=0)
-        conn.execute("INSERT INTO conflicts (couple_id, partner_id, question, reply, created_at) VALUES (?,?,?,?,?)",
-                     (couple_id, who, question, reply, when.isoformat()))
+        conn.execute("INSERT INTO conflicts (couple_id, partner_id, question, reply, nudge, created_at)"
+                     " VALUES (?,?,?,?,?,?)", (couple_id, who, question, reply, nudge, when.isoformat()))
     return {"key": my_key, "code": code, "partner": partner["name"]}

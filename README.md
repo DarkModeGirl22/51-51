@@ -61,13 +61,14 @@ flowchart LR
     BA -- "private note:<br/>how heavy was the week for him?" --> M
     M --> W["This Week board<br/><b>in words</b>"]
     M --> MSG["One kind message<br/>for each partner"]
-    M --> C["😤 Conflict button<br/>neutral reply + a fair fix"]
+    M --> C["Private chat with the mediator"]
+    C -- "kind suggestion, never the complaint" --> N["🔔 Partner's notifications"]
 ```
 
 1. **Join privately.** Partner 1 answers a few private questions (facts *and* feelings) and gets a partner code. Partner 2 enters the code and answers their own. Neither ever sees the other's answers.
 2. **Log your day.** "Picked up Lily from school." Or snap a **photo of a receipt**: the AI reads it. Every entry is sorted into 🧸 Kids, 🏡 Home or 💰 Money and appears under **Today** in your colour.
 3. **Read your week.** Each private agent rates how much *its* person carried, given their real situation. The neutral mediator turns both views into a few warm sentences and a message just for you.
-4. **Something bothering you? Press the button.** Tell the mediator, not your partner. It reads the logs, spots patterns on its own ("they used to take turns with the dishes; lately it's been Emily every time"), proposes one fair fix, and you both see the answer. You talk *to the AI*, not *at each other*.
+4. **Something bothering you? Talk it out.** A private chat with the mediator, not your partner. It reads the logs, spots patterns on its own ("they used to take turns with the dishes; lately it's been Emily every time") and answers you calmly. If something should change, your partner gets a **kind suggestion** in their notifications (*"Could you take the next dentist appointment from booking to finish? A shared calendar makes it easy"*), never your words. You talk *to the AI*, not *at each other*.
 5. **Facts must match.** If one says 2 kids and the other says 3, 51/51 asks you to settle it before the agents reason about two different families. Private things like salary are never compared.
 
 ---
@@ -108,11 +109,11 @@ Based on what these apps describe publicly. Most apps **count**. 51/51 **underst
 
 ## Tested to break
 
-We didn't just test that it works. We tried to **trick it**. Two test suites, **85 checks**, all passing:
+We didn't just test that it works. We tried to **trick it**. Two test suites, **95 checks**, all passing:
 
 ```bash
-python tests/check_app.py      # 47 checks: every feature, end to end
-python tests/check_tricks.py    # 38 checks: trying to break, fool or leak from it
+python tests/check_app.py      # 55 checks: every feature, end to end
+python tests/check_tricks.py    # 40 checks: trying to break, fool or leak from it
 ```
 
 A **fake Gemini** plays the worst AI it can be, and 51/51 has to survive:
@@ -126,6 +127,7 @@ A **fake Gemini** plays the worst AI it can be, and 51/51 has to survive:
 | `<img onerror=…>` typed as a log | Stored and shown as plain text. No page ever inserts user text as HTML |
 | Names like `Ryan2`, a 9 MB photo, a text file posing as a receipt, minus one children | Refused, each with a kind, plain-English message |
 | Another couple's key, a made-up key, a third person joining a couple | Nobody sees anything that isn't theirs |
+| A spouse trying to read their partner's chat with the mediator | Impossible: chats are private. An AI-written suggestion that quotes the complaint is caught and replaced |
 | Opening the app ten times in a row | The AI runs only when something new was logged, which protects the free quota |
 | An angry *"I picked up the kids 10 times, he did it twice!"* | Taken seriously, never silenced: the mediator checks the claim against the logs and can state plain counts. *No numbers* is only for the weekly board |
 | The same dishes pattern seen by the husband instead of the wife | Same facts, same fair fix. Gender never enters the judgement |
