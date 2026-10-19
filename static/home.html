@@ -70,6 +70,19 @@
     </section>
 
     <section class="right">
+      <div class="greeting">
+        <h1 id="hello">Hello</h1>
+        <p class="muted" id="hello-sub">Here's how your week is going.</p>
+      </div>
+
+      <div class="card ideas" id="ideas">
+        <div class="panel-title">
+          <h2>Ideas for you</h2>
+          <span class="small muted">From your private agent</span>
+        </div>
+        <div id="ideas-list"></div>
+      </div>
+
       <div class="card week" id="week">
         <div class="panel-title">
           <h2>This week</h2>
@@ -113,9 +126,52 @@
     document.getElementById("code").textContent = H.code;
     document.getElementById("practice").classList.toggle("hidden", H.ai_mode !== "practice");
     document.getElementById("sample").classList.toggle("hidden", !H.sample);
-    drawFact(); drawDays(); drawStory();
+    drawGreeting(); drawFact(); drawDays(); drawStory();
     WEEK_MSG = null; drawNotifs();
     loadWeek();
+  }
+
+  // ---------- greeting ----------
+  function drawGreeting() {
+    const h = new Date().getHours();
+    const part = h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
+    document.getElementById("hello").textContent = part + ", " + H.me.name;
+    document.getElementById("hello-sub").textContent = H.partner
+      ? "Here's how this week is going for you and " + H.partner.name + "."
+      : "Your partner hasn't joined yet. You can already log what you do.";
+  }
+
+  // ---------- ideas from my private agent ----------
+  function ideaKey(i) { return "5151-idea-" + H.me.id + "-" + i.title; }
+  function ideaState(i) { try { return localStorage.getItem(ideaKey(i)); } catch (e) { return null; } }
+  function setIdeaState(i, v) { try { localStorage.setItem(ideaKey(i), v); } catch (e) {} }
+
+  function drawIdeas(ideas) {
+    const list = document.getElementById("ideas-list");
+    list.innerHTML = "";
+    if (ideas === null) { list.append(el("div", { class: "skeleton" }, el("i"), el("i"))); return; }
+    const shown = ideas.filter(i => ideaState(i) !== "later");
+    if (!shown.length) {
+      list.append(el("p", { class: "muted", style: "margin:0" }, H.partner
+        ? "No new ideas right now. Keep logging, and your agent will suggest what could help."
+        : "Ideas appear once your partner joins and you both log a few things."));
+      return;
+    }
+    for (const i of shown) {
+      const planned = ideaState(i) === "planned";
+      const row = el("div", { class: "idea" + (planned ? " planned" : "") },
+        el("div", { class: "idea-body" },
+          el("div", { class: "idea-title" }, i.title),
+          el("div", { class: "idea-detail" }, colourNames(i.detail))));
+      if (planned) {
+        row.append(el("span", { class: "idea-done" }, "Planned"));
+      } else {
+        row.append(el("div", { class: "idea-actions" },
+          el("button", { type: "button", onclick: () => { setIdeaState(i, "planned"); drawIdeas(ideas); } }, "I'll do it"),
+          el("button", { type: "button", class: "secondary", onclick: () => { setIdeaState(i, "later"); drawIdeas(ideas); } }, "Not now")));
+      }
+      list.append(row);
+    }
   }
 
   // ---------- notifications (the bell) ----------
@@ -168,15 +224,18 @@
     body.innerHTML = "";
     if (!H.partner) {
       body.append(empty("Your week together starts when your partner joins."));
+      drawIdeas([]);
       return;
     }
     for (const area of ["kids", "home", "money"]) body.append(areaRow(area, null, null));
+    drawIdeas(null);
 
     let w;
     try { w = (await api("/api/week")).week; }
     catch (ex) { w = { error: ex.message }; }
 
     body.innerHTML = "";
+    drawIdeas(w && !w.error ? (w.ideas || []) : []);
     if (!w) {
       body.append(empty("Nothing logged this week yet. Add your first thing, and your agents will tell the story of your week."));
       return;

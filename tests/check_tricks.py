@@ -125,6 +125,19 @@ def privacy(c):
         board = c.get("/api/week", headers=sample).json()["week"]
     ok("guilty" not in json.dumps(board), "board that leaks a secret is replaced")
 
+    class LeakyIdeas(FakeGemini):
+        def __call__(self, prompt, image=None, mime=None):
+            if "PRIVATE agent" in prompt:
+                return {"load": {"kids": 3, "home": 3, "money": 0}, "note": "x",
+                        "ideas": [{"title": "Be kind", "detail": f"Ryan told me: {RYAN_SECRET}"},
+                                  {"title": "Fine idea", "detail": "Take the dishes on Tuesday."}]}
+            return good_board(prompt)
+    c.post("/api/entries", data={"text": "Watered the plants"}, headers=sample)
+    with LeakyIdeas(None):
+        ideas = c.get("/api/week", headers=sample).json()["week"]["ideas"]
+    ok(ideas and "guilty" not in json.dumps(ideas) and any(i["title"] == "Fine idea" for i in ideas),
+       "an idea that reveals the partner's private answer is dropped; the good ones stay")
+
 
 def ai_misbehaving(c):
     sample = demo(c)

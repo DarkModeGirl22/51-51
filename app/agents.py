@@ -121,10 +121,20 @@ For example, paying most bills counts more for someone who earns less; a school 
 counts for a lot when it means leaving work early. Defend your person respectfully and fairly.
 Rate how much your person carried this week in each area from 0 (nothing) to 4 (carried it all),
 and write a short private note explaining why (this note is never shown to anyone).
-Reply as JSON: {{"load": {{"kids": 0-4, "home": 0-4, "money": 0-4}}, "note": "..."}}"""
+Then give your person two or three practical IDEAS for the coming days, only for them, based on the log and
+their real situation. Concrete and doable, never preachy. For example, if their partner keeps handling the
+kids' appointments and your person can't do pickups, suggest keeping the dates in a shared calendar;
+if your person carried a lot, suggest asking for one specific thing. Each idea: a short title (max six
+words) and one friendly sentence. Never mention anything private about {partner_name}.
+Reply as JSON: {{"load": {{"kids": 0-4, "home": 0-4, "money": 0-4}}, "note": "...",
+"ideas": [{{"title": "...", "detail": "..."}}]}}"""
     r = ai.ask_json(prompt)
     load = {a: max(0, min(4, int(r.get("load", {}).get(a, 0)))) for a in AREAS}
-    return {"load": load, "note": str(r.get("note", ""))[:800]}
+    ideas = []
+    for i in r.get("ideas") or []:
+        if isinstance(i, dict) and i.get("title") and i.get("detail"):
+            ideas.append({"title": str(i["title"]).strip()[:60], "detail": str(i["detail"]).strip()[:240]})
+    return {"load": load, "note": str(r.get("note", ""))[:800], "ideas": ideas[:3]}
 
 
 # ---------- mediator: the weekly board ----------
@@ -179,6 +189,7 @@ def weekly_board(a, b, entries) -> dict:
         board["messages"] = _messages(a, b, board["balance"], rnd)
         board = _guard(board, a, b, notes, rnd, entries)
         board["lean"] = leans(a, b, notes, entries)
+        board["ideas"] = ideas_for(a, b, notes, board["lean"])
         return board
 
     prompt = f"""You are the neutral mediator of 51/51, an app that helps a married couple share
@@ -219,7 +230,49 @@ Reply as JSON: {{"areas": {{"kids": "...", "home": "...", "money": "..."}}, "bal
         board["messages"] = _messages(a, b, board["balance"], rnd)
     board = _guard(board, a, b, notes, rnd, entries)
     board["lean"] = leans(a, b, notes, entries)
+    board["ideas"] = ideas_for(a, b, notes, board["lean"])
     return board
+
+
+IDEAS_WHEN_PARTNER_CARRIES = {
+    "kids": ("Keep the family calendar",
+             "{other} is handling most of the kids' logistics. You could keep the dentist, school events and "
+             "activities in a shared calendar, so they aren't the only one remembering."),
+    "home": ("Take the next dishes",
+             "{other} has carried most of the home lately. Pick two evenings this week and take the dishes "
+             "after dinner."),
+    "money": ("Say thank you",
+              "{other} covered a lot of the money side this week. A simple thank-you tonight goes a long way."),
+}
+IDEAS_WHEN_I_CARRY = ("Ask for one thing",
+                      "You carried most of {area} this week. Pick one task you'd like {other} to take next week "
+                      "and ask for it, or tell the mediator what's bothering you.")
+IDEA_SHARED = ("Keep it going", "You and {other} are sharing {area} well. Keep logging so it stays visible.")
+
+
+def ideas_for(a, b, notes, lean) -> dict:
+    """Two or three ideas per partner, written by their own private agent (rules as a fallback).
+    An idea is checked so it never reveals anything private about the other partner."""
+    out = {}
+    for me, other in ((a, b), (b, a)):
+        ideas = [i for i in notes[me["id"]].get("ideas", [])
+                 if not leaks(i["title"] + " " + i["detail"], [other]) and "%" not in i["detail"]]
+        if len(ideas) < 2:  # the agent didn't give enough: add rule-based ideas
+            for area in sorted(AREAS, key=lambda x: -lean[x]["strength"]):
+                l = lean[area]
+                if l["toward"] == other["id"]:
+                    t, d = IDEAS_WHEN_PARTNER_CARRIES[area]
+                elif l["toward"] == me["id"]:
+                    t, d = IDEAS_WHEN_I_CARRY
+                else:
+                    t, d = IDEA_SHARED
+                idea = {"title": t, "detail": d.format(other=other["name"], area=AREA_WORDS[area])}
+                if idea["title"] not in [i["title"] for i in ideas]:
+                    ideas.append(idea)
+                if len(ideas) >= 3:
+                    break
+        out[str(me["id"])] = ideas[:3]
+    return out
 
 
 def leans(a, b, notes, entries) -> dict:

@@ -68,8 +68,9 @@ flowchart LR
 1. **Join privately.** Partner 1 answers a few private questions (facts *and* feelings) and gets a partner code. Partner 2 enters the code and answers their own. Neither ever sees the other's answers.
 2. **Log your day.** "Picked up Lily from school." Or snap a **photo of a receipt**: the AI reads it. Every entry is sorted into 🧸 Kids, 🏡 Home or 💰 Money and appears under **Today** in your colour.
 3. **Read your week.** Each private agent rates how much *its* person carried, given their real situation. The neutral mediator turns both views into a few warm sentences and a message just for you.
-4. **Something bothering you? Talk it out.** A private chat with the mediator, not your partner. It reads the logs, spots patterns on its own ("they used to take turns with the dishes; lately it's been Emily every time") and answers you calmly. If something should change, your partner gets a **kind suggestion** in their notifications (*"Could you take the next dentist appointment from booking to finish? A shared calendar makes it easy"*), never your words. You talk *to the AI*, not *at each other*.
-5. **Facts must match.** If one says 2 kids and the other says 3, 51/51 asks you to settle it before the agents reason about two different families. Private things like salary are never compared.
+4. **Get ideas, just for you.** Your private agent suggests two or three practical things for the coming days. Ryan, who can't do school pickups, might read: *"Keep the family calendar: Emily handles the dentist and school events, so you could keep the dates."*
+5. **Something bothering you? Talk it out.** A private chat with the mediator, not your partner. It reads the logs, spots patterns on its own ("they used to take turns with the dishes; lately it's been Emily every time") and answers you calmly. If something should change, your partner gets a **kind suggestion** in their notifications (*"Could you take the next dentist appointment from booking to finish? A shared calendar makes it easy"*), never your words. You talk *to the AI*, not *at each other*.
+6. **Facts must match.** If one says 2 kids and the other says 3, 51/51 asks you to settle it before the agents reason about two different families. Private things like salary are never compared.
 
 ---
 
@@ -109,11 +110,11 @@ Based on what these apps describe publicly. Most apps **count**. 51/51 **underst
 
 ## Tested to break
 
-We didn't just test that it works. We tried to **trick it**. Two test suites, **96 checks**, all passing:
+We didn't just test that it works. We tried to **trick it**. Two test suites, **100 checks**, all passing:
 
 ```bash
-python tests/check_app.py      # 55 checks: every feature, end to end
-python tests/check_tricks.py    # 41 checks: trying to break, fool or leak from it
+python tests/check_app.py      # 58 checks: every feature, end to end
+python tests/check_tricks.py    # 42 checks: trying to break, fool or leak from it
 ```
 
 A **fake Gemini** plays the worst AI it can be, and 51/51 has to survive:

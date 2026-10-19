@@ -190,6 +190,13 @@ def slice3(c):
     ai.ask_json, ai.mode = real, ai_mode
 
 
+def _ryan_key(emily_key):
+    from app import db as _db
+    with _db.connect() as conn:
+        return conn.execute("SELECT key FROM partners WHERE couple_id=(SELECT couple_id FROM partners WHERE key=?)"
+                            " AND key!=?", (emily_key, emily_key)).fetchone()[0]
+
+
 def slice4(c):
     import re as _re
     from app import sample
@@ -202,6 +209,11 @@ def slice4(c):
     wk = c.get("/api/week", headers=leila).json()["week"]
     ok(wk and wk["areas"]["kids"], "sample couple has a full week on the board")
     ok(len(h["entries"]) > 10, "the home shows the whole week day by day, not just today")
+    ok(2 <= len(wk["ideas"]) <= 3, "Emily gets two or three ideas from her private agent")
+    ryan_week = c.get("/api/week", headers={"X-Partner-Key": _ryan_key(d["key"])}).json()["week"]
+    ok(any("calendar" in i["detail"].lower() for i in ryan_week["ideas"]),
+       "Ryan's agent suggests keeping the family calendar, since Emily handles the kids")
+    ok(wk["ideas"] != ryan_week["ideas"], "each partner gets their own ideas")
     ok(len(h["story"]) >= 5 and all(not _re.search(r"\d|%", w["story"]) for w in h["story"]),
        "'Your story' tells past weeks in words, never numbers")
     ok(any(w["leader"] for w in h["story"]), "the story shows weeks where one partner carried more")

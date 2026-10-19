@@ -276,7 +276,9 @@ def week(x_partner_key: str | None = Header(default=None),
     # each partner only ever receives THEIR OWN message
     return {"week": {"areas": board["areas"], "headline": board.get("headline", ""),
                      "message": board["messages"].get(str(me["id"]), ""),
-                     "lean": board.get("lean", {}), "stale": board.get("stale", False)}}
+                     "lean": board.get("lean", {}), "stale": board.get("stale", False),
+                     # ideas from MY private agent, only for me
+                     "ideas": board.get("ideas", {}).get(str(me["id"]), [])}}
 
 
 class KidsFix(BaseModel):

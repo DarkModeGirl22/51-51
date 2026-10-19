@@ -218,3 +218,18 @@ input:focus, textarea:focus, select:focus { outline: none; border-color: var(--a
 .composer { display: flex; gap: 10px; align-items: flex-end; padding: 14px 16px; border-top: 1px solid var(--line); background: var(--surface); }
 .composer textarea { min-height: 46px; max-height: 160px; resize: vertical; }
 .chat .error { padding: 0 16px 14px; margin: 0; }
+
+/* greeting + ideas from your private agent */
+.greeting { padding: 4px 2px 16px; }
+.greeting h1 { font-family: var(--serif); font-weight: 500; font-size: 34px; letter-spacing: -0.01em; margin-bottom: 4px; }
+.greeting p { margin: 0; }
+.ideas { border-color: #c9ddd4; background: linear-gradient(0deg, var(--surface), var(--surface)); }
+.idea { display: flex; gap: 14px; align-items: center; padding: 14px 0; border-top: 1px solid var(--line); flex-wrap: wrap; }
+.idea:first-child { border-top: 0; padding-top: 4px; }
+.idea-body { flex: 1; min-width: 220px; }
+.idea-title { font-weight: 700; }
+.idea-detail { color: var(--soft); margin-top: 2px; }
+.idea-actions { display: flex; gap: 8px; }
+.idea-actions button { padding: 8px 14px; font-size: 14px; }
+.idea-done { font-size: 13px; font-weight: 600; color: var(--act); background: var(--act-wash); padding: 4px 12px; border-radius: 999px; }
+.idea.planned .idea-title { color: var(--soft); }
