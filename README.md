@@ -2,6 +2,10 @@
 
 # 51/51
 
+[![Watch the 51/51 demo](https://img.youtube.com/vi/Jo4NgrviNro/hqdefault.jpg)](https://www.youtube.com/watch?v=Jo4NgrviNro)
+
+**▶ [Watch the 51/51 demo on YouTube](https://www.youtube.com/watch?v=Jo4NgrviNro)**
+
 ### Not 50/50. Both of you, a little more than half.
 
 **Private AI agents that help married couples share kids, home and money fairly, and say the hard things kindly, so they never have to fight about it.**
